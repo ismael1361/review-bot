@@ -1,0 +1,209 @@
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+
+export const users = sqliteTable('users', {
+  id: text('id').primaryKey(),
+  username: text('username').notNull(),
+  passwordHash: text('password_hash').notNull(),
+  role: text('role', { enum: ['admin', 'operator', 'viewer'] }).notNull(),
+  isRoot: integer('is_root', { mode: 'boolean' }).notNull().default(false),
+  disabled: integer('disabled', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+  lastLoginAt: integer('last_login_at'),
+}, (t) => [uniqueIndex('users_username_unique').on(t.username)]);
+
+export const sessions = sqliteTable('sessions', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tokenHash: text('token_hash').notNull(),
+  createdAt: integer('created_at').notNull(),
+  lastSeenAt: integer('last_seen_at').notNull(),
+  idleExpiresAt: integer('idle_expires_at').notNull(),
+  absoluteExpiresAt: integer('absolute_expires_at').notNull(),
+  ip: text('ip'),
+  userAgent: text('user_agent'),
+}, (t) => [uniqueIndex('sessions_token_unique').on(t.tokenHash), index('sessions_user').on(t.userId)]);
+
+export const appSettings = sqliteTable('app_settings', {
+  key: text('key').primaryKey(),
+  valueJson: text('value_json').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export const githubCredentials = sqliteTable('github_credentials', {
+  id: text('id').primaryKey(),
+  login: text('login').notNull(),
+  patEncrypted: text('pat_encrypted').notNull(),
+  patLast4: text('pat_last4').notNull(),
+  scopes: text('scopes'),
+  validatedAt: integer('validated_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export const aiProfiles = sqliteTable('ai_profiles', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  provider: text('provider', { enum: ['openai_compatible', 'anthropic'] }).notNull(),
+  baseUrl: text('base_url').notNull(),
+  model: text('model').notNull(),
+  apiKeyEncrypted: text('api_key_encrypted').notNull(),
+  temperature: real('temperature').notNull(),
+  maxOutputTokens: integer('max_output_tokens').notNull(),
+  maxTurns: integer('max_turns').notNull(),
+  maxTotalTokens: integer('max_total_tokens').notNull(),
+  maxDurationSec: integer('max_duration_sec').notNull(),
+  maxFindings: integer('max_findings').notNull(),
+  maxGithubCalls: integer('max_github_calls').notNull(),
+  prePrompt: text('pre_prompt').notNull(),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+}, (t) => [uniqueIndex('ai_profiles_name_unique').on(t.name)]);
+
+export const skills = sqliteTable('skills', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description').notNull(),
+  contentMd: text('content_md').notNull(),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+}, (t) => [uniqueIndex('skills_name_unique').on(t.name)]);
+
+export const aiProfileSkills = sqliteTable('ai_profile_skills', {
+  profileId: text('profile_id').notNull().references(() => aiProfiles.id, { onDelete: 'cascade' }),
+  skillId: text('skill_id').notNull().references(() => skills.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull(),
+}, (t) => [primaryKey({ columns: [t.profileId, t.skillId] })]);
+
+export const repositories = sqliteTable('repositories', {
+  id: text('id').primaryKey(),
+  githubId: text('github_id').notNull(),
+  owner: text('owner').notNull(),
+  name: text('name').notNull(),
+  fullName: text('full_name').notNull(),
+  private: integer('private', { mode: 'boolean' }).notNull().default(false),
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  discoveredAt: integer('discovered_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+}, (t) => [uniqueIndex('repositories_github_id_unique').on(t.githubId), uniqueIndex('repositories_full_name_unique').on(t.fullName)]);
+
+export const jobs = sqliteTable('jobs', {
+  id: text('id').primaryKey(),
+  repositoryId: text('repository_id').notNull().references(() => repositories.id),
+  prNumber: integer('pr_number').notNull(),
+  prTitle: text('pr_title').notNull(),
+  prUrl: text('pr_url').notNull(),
+  authorLogin: text('author_login').notNull(),
+  headSha: text('head_sha').notNull(),
+  baseSha: text('base_sha').notNull(),
+  runSeq: integer('run_seq').notNull().default(1),
+  status: text('status', { enum: ['queued', 'running', 'succeeded', 'partial', 'failed', 'cancelled'] }).notNull(),
+  priority: integer('priority').notNull().default(0),
+  attempts: integer('attempts').notNull().default(0),
+  maxAttempts: integer('max_attempts').notNull().default(3),
+  profileId: text('profile_id').references(() => aiProfiles.id),
+  profileSnapshotJson: text('profile_snapshot_json'),
+  queuedAt: integer('queued_at').notNull(),
+  startedAt: integer('started_at'),
+  finishedAt: integer('finished_at'),
+  heartbeatAt: integer('heartbeat_at'),
+  lockedBy: text('locked_by'),
+  errorCode: text('error_code'),
+  errorMessage: text('error_message'),
+  usageJson: text('usage_json'),
+}, (t) => [
+  uniqueIndex('jobs_unique_run').on(t.repositoryId, t.prNumber, t.headSha, t.runSeq),
+  index('jobs_status_queued').on(t.status, t.queuedAt),
+]);
+
+export const reviews = sqliteTable('reviews', {
+  id: text('id').primaryKey(),
+  jobId: text('job_id').notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  githubReviewId: text('github_review_id'),
+  url: text('url'),
+  body: text('body').notNull(),
+  event: text('event').notNull(),
+  commentsPosted: integer('comments_posted').notNull().default(0),
+  commentsFallback: integer('comments_fallback').notNull().default(0),
+  status: text('status', { enum: ['posted', 'fallback', 'failed'] }).notNull(),
+  postedAt: integer('posted_at'),
+}, (t) => [uniqueIndex('reviews_job_unique').on(t.jobId)]);
+
+export const reviewFindings = sqliteTable('review_findings', {
+  id: text('id').primaryKey(),
+  jobId: text('job_id').notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  reviewId: text('review_id').references(() => reviews.id, { onDelete: 'set null' }),
+  path: text('path').notNull(),
+  startLine: integer('start_line'),
+  endLine: integer('end_line'),
+  side: text('side').notNull().default('RIGHT'),
+  severity: text('severity', { enum: ['critical', 'medium', 'suggestion', 'strength'] }).notNull(),
+  title: text('title').notNull(),
+  bodyMd: text('body_md').notNull(),
+  suggestionMd: text('suggestion_md'),
+  status: text('status', { enum: ['valid', 'outside_diff', 'duplicate', 'posted', 'fallback', 'rejected'] }).notNull(),
+  githubCommentId: text('github_comment_id'),
+  createdAt: integer('created_at').notNull(),
+}, (t) => [index('findings_job_status').on(t.jobId, t.status)]);
+
+export const agentMessages = sqliteTable('agent_messages', {
+  id: text('id').primaryKey(),
+  jobId: text('job_id').notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  seq: integer('seq').notNull(),
+  role: text('role').notNull(),
+  contentJson: text('content_json').notNull(),
+  toolName: text('tool_name'),
+  tokensIn: integer('tokens_in'),
+  tokensOut: integer('tokens_out'),
+  createdAt: integer('created_at').notNull(),
+}, (t) => [index('agent_messages_job_seq').on(t.jobId, t.seq)]);
+
+export const events = sqliteTable('events', {
+  id: text('id').primaryKey(),
+  jobId: text('job_id').references(() => jobs.id, { onDelete: 'cascade' }),
+  level: text('level', { enum: ['info', 'warn', 'error'] }).notNull(),
+  type: text('type').notNull(),
+  message: text('message').notNull(),
+  dataJson: text('data_json'),
+  createdAt: integer('created_at').notNull(),
+}, (t) => [index('events_job_created').on(t.jobId, t.createdAt)]);
+
+export const webhooks = sqliteTable('webhooks', {
+  id: text('id').primaryKey(),
+  url: text('url').notNull(),
+  secretEncrypted: text('secret_encrypted').notNull(),
+  eventsJson: text('events_json').notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export const webhookDeliveries = sqliteTable('webhook_deliveries', {
+  id: text('id').primaryKey(),
+  webhookId: text('webhook_id').notNull().references(() => webhooks.id, { onDelete: 'cascade' }),
+  event: text('event').notNull(),
+  success: integer('success', { mode: 'boolean' }).notNull(),
+  statusCode: integer('status_code'),
+  attempt: integer('attempt').notNull(),
+  responseExcerpt: text('response_excerpt'),
+  createdAt: integer('created_at').notNull(),
+}, (t) => [index('webhook_deliveries_webhook_created').on(t.webhookId, t.createdAt)]);
+
+export const auditLog = sqliteTable('audit_log', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+  action: text('action').notNull(),
+  targetType: text('target_type'),
+  targetId: text('target_id'),
+  dataJson: text('data_json'),
+  ip: text('ip'),
+  createdAt: integer('created_at').notNull(),
+}, (t) => [index('audit_log_created').on(t.createdAt)]);
+
+export const githubCache = sqliteTable('github_cache', {
+  key: text('key').primaryKey(),
+  etag: text('etag').notNull(),
+  payloadJson: text('payload_json').notNull(),
+  expiresAt: integer('expires_at').notNull(),
+});

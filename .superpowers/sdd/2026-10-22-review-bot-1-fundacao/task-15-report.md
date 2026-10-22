@@ -1,0 +1,176 @@
+# Task 15 Report: Docker, Compose e README
+
+## Status
+DONE_WITH_CONCERNS
+
+## What I implemented
+
+Created the deployment and bootstrap layer exactly as specified in the brief:
+
+- `Dockerfile`
+  - Multi-stage build on `node:22-bookworm-slim`.
+  - Enables Corepack, copies `package.json`, `yarn.lock` and `.yarnrc.yml`, then runs `yarn install --immutable`.
+  - Copies the source, runs `yarn build`, and produces `dist/server/server.js` plus `dist/web`.
+  - Runtime stage sets `NODE_ENV=production`, copies `node_modules`, `dist`, `drizzle` and `package.json`, creates `/data` owned by `node`, runs as `node`, exposes port 3000 and starts `node dist/server/server.js`.
+  - Full `node_modules` is copied, including dev dependencies, which is accepted for this task (no prune).
+
+- `docker-compose.yml`
+  - Single `app` service built from `.`, image `review-bot:local`, `.env` via `env_file`, port `3000:3000`, named volume `data:/data`, `restart: unless-stopped`.
+  - Healthcheck runs a Node 22 `fetch` against `http://127.0.0.1:3000/healthz` every 30 seconds.
+
+- `.env.example`
+  - Includes `APP_ENCRYPTION_KEY`, `PUBLIC_URL`, `DATA_DIR`, `PORT`, `TRUST_PROXY`, `ALLOW_PRIVATE_URLS`, `LOG_LEVEL` and `TZ`.
+
+- `.dockerignore`
+  - Excludes `node_modules`, `dist`, `data`, `.env` and `coverage`.
+
+- `README.md`
+  - Installation through Docker Compose, setup-token discovery, development commands, environment-variable table and SQLite/WAL backup guidance.
+
+- `src/server.ts`
+  - Real bootstrap using `loadConfig`, `createLogger`, `mkdirSync` for `DATA_DIR`, `createDb`, `runMigrations`, `loadEncryptionKey`, `ensureSetupToken`, `createEventBus`, `buildApp`, `app.listen` on `0.0.0.0`, startup log, and graceful `SIGTERM`/`SIGINT` shutdown.
+
+No code comments were added. Strict TypeScript, ESM and the existing project conventions were preserved.
+
+## What I tested and results
+
+### Docker Compose configuration
+
+Docker CLI and Compose are installed:
+
+```text
+Docker version 29.9.1, build dfc520d
+Docker Compose version v5.6.0
+```
+
+A temporary `.env` was created from `.env.example` with the brief's test key, then:
+
+```text
+docker compose config
+```
+
+Result: exit 0. The rendered configuration contained:
+
+- service `app` with image `review-bot:local`;
+- build context `D:\projetos\review-bot`;
+- named volume `data` mounted at `/data`;
+- port mapping `3000:3000`;
+- the configured environment values;
+- the Node healthcheck command.
+
+The temporary `.env` was deleted afterward; only `.env.example` remains.
+
+### Docker image build
+
+`docker build -t review-bot:local .` could not run because the Docker daemon is not started:
+
+```text
+ERROR: failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine;
+check if the path is correct and if the daemon is running
+```
+
+The Dockerfile and Compose file were therefore validated by Compose parsing and inspection, but the image itself was not built or run in this environment.
+
+### Build
+
+Command: `yarn build`
+
+```text
+vite v6.4.5 building for production...
+✓ 102 modules transformed.
+dist/web/index.html                 0.45 kB │ gzip:   0.29 kB
+dist/web/assets/index-BDtUn6ZE.css 14.98 kB │ gzip:   3.88 kB
+dist/web/assets/index-DG4ZcFvD.js 330.07 kB │ gzip: 101.26 kB
+✓ built in 3.60s
+
+CLI Building entry: src/server.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Target: node22
+ESM Build start
+ESM dist\server\server.js 69.17 KB
+ESM Build success in 437ms
+```
+
+Verified `dist/server/server.js` and `dist/web/index.html` both exist.
+
+### Full checkpoint
+
+- `yarn typecheck` -> exit 0, no output.
+- `yarn lint` -> exit 0, no output.
+- `yarn test` -> `Test Files 25 passed (25)`, `Tests 84 passed (84)`, duration 30.84s.
+- `yarn build` -> success, artifacts listed above.
+
+### Smoke test of the built server
+
+Environment used:
+
+```text
+APP_ENCRYPTION_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+DATA_DIR=%TEMP%\review-bot-smoke
+PORT=3210
+```
+
+Ran `node dist/server/server.js` and queried it with `curl.exe`:
+
+```text
+GET /healthz
+{"status":"ok"}
+
+GET /api/setup/status
+{"needsSetup":true}
+```
+
+Server log confirmed:
+
+- migrations ran successfully;
+- a one-time setup token was emitted;
+- Fastify listened on port 3210;
+- the startup message `review-bot iniciado` was logged;
+- both requests returned HTTP 200.
+
+The smoke data directory contained `review-bot.db`, `review-bot.db-shm` and `review-bot.db-wal`, confirming the SQLite initialization and WAL mode. The server process was stopped and the temporary data/log files were removed.
+
+## TDD evidence
+
+Not applicable: this is an infrastructure/bootstrap task with no new unit behavior. Verification evidence is recorded above as build, typecheck, lint, test, Compose and smoke commands with their results.
+
+## Files changed
+
+Created:
+- `Dockerfile`
+- `docker-compose.yml`
+- `.env.example`
+- `.dockerignore`
+- `README.md`
+- `src/server.ts`
+
+Generated by the build (not source):
+- `dist/server/server.js`
+- `dist/web/index.html`
+- `dist/web/assets/index-BDtUn6ZE.css`
+- `dist/web/assets/index-DG4ZcFvD.js`
+
+Temporary files removed:
+- `.env` (used only for `docker compose config`)
+- `%TEMP%\review-bot-smoke` and its logs
+
+## Self-review findings
+
+- `src/server.ts` matches the actual interfaces of `createDb` (`{ sqlite, db }`), `runMigrations`, `loadEncryptionKey`, `ensureSetupToken`, `createEventBus` and `buildApp`.
+- The app listens on `0.0.0.0`, which is required for the published Compose port and healthcheck.
+- Migrations use `process.cwd() + /drizzle`; in the image the working directory is `/app`, and `drizzle` is copied there, so this resolves correctly.
+- Static SPA serving in `buildApp` also uses `process.cwd() + /dist/web`, which matches the image layout and was verified locally.
+- The runtime user is `node` and owns `/data`; the only runtime SQLite writes target that directory.
+- `.dockerignore` prevents host `node_modules`, build output, local databases and secrets from entering the build context.
+- The temporary `.env` used for Compose was not left in the workspace.
+- No source comments, placeholders or TODOs were introduced. Typecheck and lint are clean.
+- No git repository exists; no commits were made.
+
+## Concerns
+
+- The Docker daemon was not running, so `docker build` and a container-level healthcheck could not be exercised. Compose configuration parsing succeeded, and the same built server was smoke-tested directly on the host, but the final image remains unverified end-to-end in this environment.
+- `docker-compose.yml` requires a real `.env` because `env_file: .env` is mandatory. A fresh checkout must follow the README before `docker compose config` or `docker compose up` will work.
+- The runtime image intentionally includes the full `node_modules` tree, including dev dependencies. This is accepted for Task 15, but it keeps the image larger than a pruned or production-only install.
+- `yarn dev` does not load `.env` automatically; the server reads `process.env` directly. Developers must export the required variables or use an env-file-capable launcher locally. This follows the brief and existing setup.
+- The Compose port mapping and healthcheck are hardcoded to 3000, while `PORT` is configurable in `.env`. Changing `PORT` inside the container without also updating the Compose port/healthcheck would break access and health reporting. This follows the brief exactly.
