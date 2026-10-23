@@ -2,14 +2,18 @@
   "name": "review-bot",
   "private": true,
   "type": "module",
-  "packageManager": "yarn@4.5.1",
+  "packageManager": "bun@1.4.2",
+  "trustedDependencies": [
+    "better-sqlite3",
+    "esbuild"
+  ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "dev:web": "vite",
-    "build": "yarn build:web && yarn build:server",
+    "build": "bun run build:web && bun run build:server",
     "build:web": "vite build",
     "build:server": "tsup src/server.ts --format esm --platform node --target node22 --out-dir dist/server --external better-sqlite3 --external @node-rs/argon2",
     "start": "node dist/server/server.js",

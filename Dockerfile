@@ -1,10 +1,12 @@
+FROM oven/bun:1 AS bun
+
 FROM node:22-bookworm-slim AS build
-RUN corepack enable
+COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 WORKDIR /app
-COPY package.json yarn.lock .yarnrc.yml ./
-RUN yarn install --immutable
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 COPY . .
-RUN yarn build
+RUN bun run build
 
 FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production

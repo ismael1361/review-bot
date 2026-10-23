@@ -12,10 +12,23 @@ Painel e automação de review de Pull Requests. Esta fase entrega a fundação:
 
 ## Desenvolvimento
 
-- `yarn install`
-- `yarn dev` (API em http://localhost:3000)
-- `yarn dev:web` (SPA em http://localhost:5173 com proxy para a API)
-- `yarn test`, `yarn typecheck`, `yarn lint`
+Requisitos: Node.js >= 22 e Bun >= 1.2 (o runtime da aplicação continua sendo o Node).
+
+- `bun install`
+- `bun run dev` (API em http://localhost:3000)
+- `bun run dev:web` (SPA em http://localhost:5173 com proxy para a API)
+- `bun run test`, `bun run typecheck`, `bun run lint`, `bun run build`
+
+## Depuração no VS Code
+
+As configurações estão em `.vscode/launch.json`:
+
+- **API (Node + tsx)**: sobe a API com breakpoints, carregando o `.env` e usando `DATA_DIR=./data`.
+- **Web (Vite)** e **Web (Chrome)**: SPA com breakpoints no navegador.
+- **Full stack (API + Web)**: composto que sobe API, Vite e Chrome juntos.
+- **Teste atual (Vitest)**: executa e depura o arquivo de teste aberto.
+
+O `APP_ENCRYPTION_KEY` é lido do `.env` (veja a seção de instalação).
 
 ## Variáveis de ambiente
 
@@ -24,7 +37,7 @@ Painel e automação de review de Pull Requests. Esta fase entrega a fundação:
 | `APP_ENCRYPTION_KEY` | 32 bytes em base64 (obrigatória) |
 | `SETUP_TOKEN` | Substitui o token de setup gerado |
 | `PUBLIC_URL` | URL pública (obrigatória em produção) |
-| `DATA_DIR` | Diretório do SQLite (padrão `/data` na imagem) |
+| `DATA_DIR` | Diretório do SQLite (padrão `./data`; `/data` na imagem Docker) |
 | `TRUST_PROXY` | Confia em cabeçalhos do proxy |
 | `ALLOW_PRIVATE_URLS` | Permite provedores/webhooks em rede privada |
 

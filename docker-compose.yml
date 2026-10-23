@@ -3,6 +3,8 @@ services:
     build: .
     image: review-bot:local
     env_file: .env
+    environment:
+      DATA_DIR: /data
     ports:
       - "3000:3000"
     volumes:
