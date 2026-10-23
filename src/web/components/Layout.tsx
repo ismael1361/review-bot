@@ -14,6 +14,7 @@ export function Layout() {
   const me = useMe();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const visibleLinks = links.filter((link) => link.to !== '/settings' || me.data?.role === 'admin');
 
   async function logout() {
     await api('/api/auth/logout', { method: 'POST' });
@@ -28,7 +29,7 @@ export function Layout() {
           <div className="flex items-center gap-6">
             <span className="text-sm font-semibold tracking-tight text-slate-100">review-bot</span>
             <nav className="flex gap-4 text-sm">
-              {links.map((link) => (
+              {visibleLinks.map((link) => (
                 <NavLink
                   key={link.to}
                   to={link.to}

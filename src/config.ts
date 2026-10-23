@@ -6,7 +6,14 @@ const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   DATA_DIR: z.string().min(1).default("./data"),
-  PUBLIC_URL: z.string().url().optional(),
+  PUBLIC_URL: z
+    .string()
+    .url()
+    .refine((value) => {
+      const protocol = new URL(value).protocol;
+      return protocol === "http:" || protocol === "https:";
+    }, "PUBLIC_URL deve usar http ou https")
+    .optional(),
   APP_ENCRYPTION_KEY: z.string().min(1),
   SETUP_TOKEN: z.string().min(16).optional(),
   TRUST_PROXY: BooleanFromEnv.default("false"),

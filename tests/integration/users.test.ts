@@ -57,6 +57,25 @@ describe('usuários', () => {
     await app.close();
   });
 
+  it('exige role ou disabled no PATCH', async () => {
+    const { app, deps } = await createTestApp();
+    const cookie = await setupRootAndLogin(app, deps);
+    const created = await createUser(app, cookie, 'viewer', 'ana');
+    const response = await app.inject({ method: 'PATCH', url: `/api/users/${created.json().user.id}`, headers: { cookie }, payload: {} });
+    expect(response.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('retorna 409 ao criar username duplicado', async () => {
+    const { app, deps } = await createTestApp();
+    const cookie = await setupRootAndLogin(app, deps);
+    await createUser(app, cookie, 'viewer', 'ana');
+    const response = await createUser(app, cookie, 'operator', 'ANA');
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('username_taken');
+    await app.close();
+  });
+
   it('viewer não acessa a lista', async () => {
     const { app, deps } = await createTestApp();
     const cookie = await setupRootAndLogin(app, deps);

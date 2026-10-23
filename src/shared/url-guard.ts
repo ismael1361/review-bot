@@ -1,10 +1,10 @@
-import { isIP } from 'node:net';
-import { lookup as dnsLookup } from 'node:dns/promises';
+import { isIP } from "node:net";
+import { lookup as dnsLookup } from "node:dns/promises";
 
 export type LookupFn = (hostname: string) => Promise<string[]>;
 
 function ipv4ToBytes(ip: string): number[] {
-  return ip.split('.').map((part) => Number(part));
+  return ip.split(".").map(Number);
 }
 
 function inRange(bytes: number[], network: number[], bits: number): boolean {
@@ -15,8 +15,8 @@ function inRange(bytes: number[], network: number[], bits: number): boolean {
 }
 
 function parseIpv6(ip: string): number[] | null {
-  const clean = ip.includes('%') ? ip.slice(0, ip.indexOf('%')) : ip;
-  const halves = clean.split('::');
+  const clean = ip.includes("%") ? ip.slice(0, ip.indexOf("%")) : ip;
+  const halves = clean.split("::");
   if (halves.length > 2) {
     return null;
   }
@@ -25,9 +25,9 @@ function parseIpv6(ip: string): number[] | null {
       return [];
     }
     const out: number[] = [];
-    for (const part of side.split(':')) {
-      if (part.includes('.')) {
-        const v4 = part.split('.').map(Number);
+    for (const part of side.split(":")) {
+      if (part.includes(".")) {
+        const v4 = part.split(".").map(Number);
         if (v4.length !== 4 || v4.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) {
           return null;
         }
@@ -36,19 +36,19 @@ function parseIpv6(ip: string): number[] | null {
         if (!/^[0-9a-fA-F]{1,4}$/.test(part)) {
           return null;
         }
-        out.push(parseInt(part, 16));
+        out.push(Number.parseInt(part, 16));
       }
     }
     return out;
   };
-  const head = parseSide(halves[0] ?? '');
+  const head = parseSide(halves[0] ?? "");
   if (!head) {
     return null;
   }
   if (halves.length === 1) {
     return head.length === 8 ? head : null;
   }
-  const tail = parseSide(halves[1] ?? '');
+  const tail = parseSide(halves[1] ?? "");
   if (!tail) {
     return null;
   }
@@ -56,7 +56,7 @@ function parseIpv6(ip: string): number[] | null {
   if (zeros < 0) {
     return null;
   }
-  return [...head, ...Array<number>(zeros).fill(0), ...tail];
+  return [...head, ...new Array<number>(zeros).fill(0), ...tail];
 }
 
 export function isPrivateAddress(ip: string): boolean {
@@ -112,18 +112,18 @@ export async function assertSafeUrl(rawUrl: string, options: { allowPrivate?: bo
   try {
     url = new URL(rawUrl);
   } catch {
-    throw new Error('URL inválida');
+    throw new Error("URL inválida");
   }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error('Apenas URLs http/https são permitidas');
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("Apenas URLs http/https são permitidas");
   }
   if (options.allowPrivate) {
     return url;
   }
-  const hostname = url.hostname.replace(/^\[|\]$/g, '');
+  const hostname = url.hostname.replace(/^\[|\]$/g, "");
   const addresses = isIP(hostname) ? [hostname] : await (options.lookup ?? defaultLookup)(hostname);
   if (addresses.length === 0) {
-    throw new Error('Endereço não resolvido');
+    throw new Error("Endereço não resolvido");
   }
   for (const address of addresses) {
     if (isPrivateAddress(address)) {

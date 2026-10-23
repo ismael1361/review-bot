@@ -27,4 +27,13 @@ describe('loadConfig', () => {
   it('exige PUBLIC_URL em produção', () => {
     expect(() => loadConfig({ ...base, NODE_ENV: 'production' })).toThrow(/PUBLIC_URL/);
   });
+
+  it('aceita PUBLIC_URL http e https', () => {
+    expect(loadConfig({ ...base, PUBLIC_URL: 'https://bot.exemplo.com' }).PUBLIC_URL).toBe('https://bot.exemplo.com');
+    expect(loadConfig({ ...base, PUBLIC_URL: 'http://localhost:3000' }).PUBLIC_URL).toBe('http://localhost:3000');
+  });
+
+  it('rejeita PUBLIC_URL com esquema diferente de http e https', () => {
+    expect(() => loadConfig({ ...base, PUBLIC_URL: 'ftp://bot.exemplo.com' })).toThrow(/PUBLIC_URL/);
+  });
 });

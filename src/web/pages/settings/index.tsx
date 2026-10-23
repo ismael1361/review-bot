@@ -1,4 +1,6 @@
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
+import { Card } from '../../components/ui';
+import { useMe } from '../../components/ProtectedRoute';
 import { GithubSettings } from './Github';
 import { Profiles } from './Profiles';
 import { Skills } from './Skills';
@@ -16,6 +18,26 @@ const tabs = [
 ];
 
 export function SettingsLayout() {
+  const me = useMe();
+
+  if (me.isLoading) {
+    return <p className="p-8 text-sm text-slate-500">Carregando…</p>;
+  }
+
+  if (!me.data || me.data.role !== 'admin') {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-100">Acesso restrito</h1>
+          <p className="mt-1 text-sm text-slate-400">Apenas administradores podem acessar as definições.</p>
+        </div>
+        <Card>
+          <p className="text-sm text-slate-400">Solicite a um administrador a alteração de permissões do seu usuário.</p>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>

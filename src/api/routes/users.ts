@@ -12,7 +12,9 @@ import { audit } from '../../audit/audit';
 
 const Role = z.enum(['admin', 'operator', 'viewer']);
 const CreateBody = z.object({ username: z.string().min(3).max(64).regex(/^[a-zA-Z0-9._-]+$/), password: z.string().min(12).max(200), role: Role });
-const PatchBody = z.object({ role: Role.optional(), disabled: z.boolean().optional() });
+const PatchBody = z
+  .object({ role: Role.optional(), disabled: z.boolean().optional() })
+  .refine((body) => body.role !== undefined || body.disabled !== undefined, { message: 'Informe role ou disabled' });
 const ResetBody = z.object({ password: z.string().min(12).max(200) });
 
 function toPublic(row: { id: string; username: string; role: 'admin' | 'operator' | 'viewer'; isRoot: boolean; disabled: boolean; createdAt: number; lastLoginAt: number | null }) {
@@ -21,6 +23,11 @@ function toPublic(row: { id: string; username: string; role: 'admin' | 'operator
 
 function countActiveNonRootAdmins(db: AppDeps['db'], exceptId: string): number {
   return db.select().from(users).where(and(eq(users.role, 'admin'), eq(users.isRoot, false), eq(users.disabled, false), ne(users.id, exceptId))).all().length;
+}
+
+function isConstraintError(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === 'string' && code.startsWith('SQLITE_CONSTRAINT');
 }
 
 export function registerUserRoutes(app: FastifyInstance, deps: AppDeps): void {
@@ -42,8 +49,17 @@ export function registerUserRoutes(app: FastifyInstance, deps: AppDeps): void {
     const passwordHash = await hashPassword(body.password);
     const now = Date.now();
     const id = uuidv7();
-    deps.db.insert(users).values({ id, username, passwordHash, role: body.role, isRoot: false, disabled: false, createdAt: now, updatedAt: now }).run();
-    audit(deps.db, { userId: actor.id, action: 'user.create', targetType: 'user', targetId: id, data: { username, role: body.role }, ip: request.ip });
+    try {
+      deps.db.transaction((tx) => {
+        tx.insert(users).values({ id, username, passwordHash, role: body.role, isRoot: false, disabled: false, createdAt: now, updatedAt: now }).run();
+        audit(tx, { userId: actor.id, action: 'user.create', targetType: 'user', targetId: id, data: { username, role: body.role }, ip: request.ip });
+      });
+    } catch (error) {
+      if (isConstraintError(error)) {
+        throw new AppError('Usuário já existe', 'username_taken', 409);
+      }
+      throw error;
+    }
     return reply.code(201).send({ user: toPublic(deps.db.select().from(users).where(eq(users.id, id)).get()!) });
   });
 
@@ -72,11 +88,13 @@ export function registerUserRoutes(app: FastifyInstance, deps: AppDeps): void {
     if (body.disabled !== undefined) {
       changes.disabled = body.disabled;
     }
-    deps.db.update(users).set(changes).where(eq(users.id, target.id)).run();
-    if (changes.disabled === true) {
-      revokeUserSessions(deps.db, target.id);
-    }
-    audit(deps.db, { userId: actor.id, action: 'user.update', targetType: 'user', targetId: target.id, data: changes, ip: request.ip });
+    deps.db.transaction((tx) => {
+      tx.update(users).set(changes).where(eq(users.id, target.id)).run();
+      if (changes.disabled === true) {
+        revokeUserSessions(tx, target.id);
+      }
+      audit(tx, { userId: actor.id, action: 'user.update', targetType: 'user', targetId: target.id, data: changes, ip: request.ip });
+    });
     return { user: toPublic(deps.db.select().from(users).where(eq(users.id, target.id)).get()!) };
   });
 
@@ -95,9 +113,11 @@ export function registerUserRoutes(app: FastifyInstance, deps: AppDeps): void {
       throw new AppError('Somente o root redefine senha de administradores', 'forbidden', 403);
     }
     const passwordHash = await hashPassword(body.password);
-    deps.db.update(users).set({ passwordHash, updatedAt: Date.now() }).where(eq(users.id, target.id)).run();
-    revokeUserSessions(deps.db, target.id);
-    audit(deps.db, { userId: actor.id, action: 'user.reset_password', targetType: 'user', targetId: target.id, ip: request.ip });
+    deps.db.transaction((tx) => {
+      tx.update(users).set({ passwordHash, updatedAt: Date.now() }).where(eq(users.id, target.id)).run();
+      revokeUserSessions(tx, target.id);
+      audit(tx, { userId: actor.id, action: 'user.reset_password', targetType: 'user', targetId: target.id, ip: request.ip });
+    });
     return reply.code(204).send();
   });
 }

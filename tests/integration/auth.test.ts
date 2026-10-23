@@ -66,6 +66,61 @@ describe('autenticação', () => {
     await app.close();
   });
 
+  it('usa o Referer quando o Origin está ausente', async () => {
+    const { app } = await createTestApp();
+    const allowed = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { host: 'localhost:3000', referer: 'http://localhost:3000/login' },
+      payload: { username: 'fantasma', password: 'errada' },
+    });
+    expect(allowed.statusCode).toBe(401);
+
+    const blocked = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { host: 'localhost:3000', referer: 'https://malicioso.com/pagina' },
+      payload: { username: 'fantasma', password: 'errada' },
+    });
+    expect(blocked.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it('permite mutações quando Origin e Referer estão ausentes', async () => {
+    const { app } = await createTestApp();
+    const response = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'fantasma', password: 'errada' } });
+    expect(response.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it('limita a troca de senha a cinco tentativas por minuto', async () => {
+    const { app, deps } = await createTestApp();
+    const cookie = await setupRootAndLogin(app, deps);
+    const statuses: number[] = [];
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/password',
+        headers: { cookie },
+        payload: { currentPassword: 'senha-incorreta', newPassword: 'outra-senha-muito-longa' },
+      });
+      statuses.push(response.statusCode);
+    }
+    expect(statuses).toEqual([400, 400, 400, 400, 400, 429]);
+    await app.close();
+  });
+
+  it('rejeita login de usuário desativado', async () => {
+    const { app, deps } = await createTestApp();
+    const cookie = await setupRootAndLogin(app, deps);
+    const created = await app.inject({ method: 'POST', url: '/api/users', headers: { cookie }, payload: { username: 'ana', password: 'senha-muito-segura', role: 'viewer' } });
+    const patched = await app.inject({ method: 'PATCH', url: `/api/users/${created.json().user.id}`, headers: { cookie }, payload: { disabled: true } });
+    expect(patched.statusCode).toBe(200);
+    const response = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'ana', password: 'senha-muito-segura' } });
+    expect(response.statusCode).toBe(401);
+    await app.close();
+  });
+
   it('limita tentativas de login', async () => {
     const { app } = await createTestApp();
     const statuses: number[] = [];

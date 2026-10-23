@@ -22,6 +22,7 @@ import { registerQueueRoutes } from './routes/queue';
 import { registerSystemSettingsRoutes } from './routes/settings-system';
 import { registerDashboardRoutes } from './routes/dashboard';
 import { registerEventRoutes } from './routes/events';
+import { registerAuditRoutes } from './routes/audit';
 import type { EventBus } from '../events/bus';
 
 export type AppDeps = {
@@ -55,7 +56,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   });
 
   await registerSecurityPlugin(app, deps);
-  registerHealthRoutes(app);
+  registerHealthRoutes(app, deps);
   registerSetupRoutes(app, deps);
   registerAuthRoutes(app, deps);
   registerUserRoutes(app, deps);
@@ -69,6 +70,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   registerSystemSettingsRoutes(app, deps);
   registerDashboardRoutes(app, deps);
   registerEventRoutes(app, deps);
+  registerAuditRoutes(app, deps);
 
   const webRoot = join(process.cwd(), 'dist', 'web');
   if (existsSync(webRoot)) {
