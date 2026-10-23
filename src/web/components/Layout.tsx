@@ -8,6 +8,7 @@ const links = [
   { to: '/reviews', label: 'Reviews' },
   { to: '/queue', label: 'Fila' },
   { to: '/settings', label: 'Definições' },
+  { to: '/password', label: 'Senha' },
 ];
 
 export function Layout() {

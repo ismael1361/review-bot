@@ -8,6 +8,7 @@ import { Setup } from './pages/Setup';
 import { Dashboard } from './pages/Dashboard';
 import { Reviews } from './pages/Reviews';
 import { Queue } from './pages/Queue';
+import { Password } from './pages/Password';
 import { SettingsLayout } from './pages/settings';
 
 function SetupGate() {
@@ -31,6 +32,7 @@ export function App() {
           <Route index element={<Dashboard />} />
           <Route path="/reviews" element={<Reviews />} />
           <Route path="/queue" element={<Queue />} />
+          <Route path="/password" element={<Password />} />
           <Route path="/settings/*" element={<SettingsLayout />} />
         </Route>
       </Route>
