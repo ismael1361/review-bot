@@ -1,10 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type QueryKey } from '@tanstack/react-query';
 import { api } from '../api';
 import { Card } from '../components/ui';
+import { useEvents } from '../hooks/useEvents';
 
 type DashboardData = { queue: { queued: number; running: number }; reviews: { total: number; last24h: number }; failures: number };
 
+const DASHBOARD_QUERIES: QueryKey[] = [['dashboard']];
+
 export function Dashboard() {
+  useEvents(DASHBOARD_QUERIES);
   const dashboard = useQuery({ queryKey: ['dashboard'], queryFn: () => api<DashboardData>('/api/dashboard') });
   const data = dashboard.data;
 

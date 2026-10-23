@@ -1,0 +1,440 @@
+﻿## Status
+
+ M .superpowers/sdd/2026-10-22-review-bot-1.5-lacunas/progress.md
+ M src/web/pages/Dashboard.tsx
+ M src/web/pages/Queue.tsx
+ M src/web/pages/Reviews.tsx
+ M src/web/pages/settings/index.tsx
+?? .superpowers/sdd/2026-10-22-review-bot-1.5-lacunas/g5-brief.md
+?? .superpowers/sdd/2026-10-22-review-bot-1.5-lacunas/g5-report.md
+?? .superpowers/sdd/2026-10-22-review-bot-1.5-lacunas/g5-review-package.txt
+?? src/web/hooks/
+?? src/web/pages/settings/Audit.tsx
+?? tests/web/audit.test.tsx
+?? tests/web/use-events.test.tsx
+
+## Diff (tracked, -U10)
+
+diff --git a/src/web/pages/Dashboard.tsx b/src/web/pages/Dashboard.tsx
+index aa882df..9a38d60 100644
+--- a/src/web/pages/Dashboard.tsx
++++ b/src/web/pages/Dashboard.tsx
+@@ -1,17 +1,21 @@
+-import { useQuery } from '@tanstack/react-query';
++import { useQuery, type QueryKey } from '@tanstack/react-query';
+ import { api } from '../api';
+ import { Card } from '../components/ui';
++import { useEvents } from '../hooks/useEvents';
+ 
+ type DashboardData = { queue: { queued: number; running: number }; reviews: { total: number; last24h: number }; failures: number };
+ 
++const DASHBOARD_QUERIES: QueryKey[] = [['dashboard']];
++
+ export function Dashboard() {
++  useEvents(DASHBOARD_QUERIES);
+   const dashboard = useQuery({ queryKey: ['dashboard'], queryFn: () => api<DashboardData>('/api/dashboard') });
+   const data = dashboard.data;
+ 
+   return (
+     <div className="space-y-6">
+       <div>
+         <h1 className="text-2xl font-semibold tracking-tight text-slate-100">Dashboard</h1>
+         <p className="mt-1 text-sm text-slate-400">Fila, execuções e consumo</p>
+       </div>
+       {dashboard.isError ? <p className="text-sm text-red-400">Falha ao carregar o dashboard.</p> : null}
+diff --git a/src/web/pages/Queue.tsx b/src/web/pages/Queue.tsx
+index 9321944..6e9eafd 100644
+--- a/src/web/pages/Queue.tsx
++++ b/src/web/pages/Queue.tsx
+@@ -1,18 +1,22 @@
+-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
++import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
+ import { api } from '../api';
+ import { Button, Card, EmptyState } from '../components/ui';
++import { useEvents } from '../hooks/useEvents';
+ 
+ type QueueData = { queued: number; running: number; paused: boolean };
+ type JobRow = { id: string; prTitle: string; prUrl: string; status: string; runSeq: number; queuedAt: number };
+ 
++const QUEUE_QUERIES: QueryKey[] = [['queue'], ['jobs']];
++
+ export function Queue() {
++  useEvents(QUEUE_QUERIES);
+   const queryClient = useQueryClient();
+   const queue = useQuery({ queryKey: ['queue'], queryFn: () => api<QueueData>('/api/queue') });
+   const jobs = useQuery({ queryKey: ['jobs'], queryFn: () => api<{ jobs: JobRow[] }>('/api/jobs') });
+   const toggle = useMutation({
+     mutationFn: (paused: boolean) => api(paused ? '/api/queue/resume' : '/api/queue/pause', { method: 'POST' }),
+     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['queue'] }),
+   });
+ 
+   return (
+     <div className="space-y-6">
+diff --git a/src/web/pages/Reviews.tsx b/src/web/pages/Reviews.tsx
+index e5ff678..93904b8 100644
+--- a/src/web/pages/Reviews.tsx
++++ b/src/web/pages/Reviews.tsx
+@@ -1,17 +1,21 @@
+-import { useQuery } from '@tanstack/react-query';
++import { useQuery, type QueryKey } from '@tanstack/react-query';
+ import { api } from '../api';
+ import { Card, EmptyState } from '../components/ui';
++import { useEvents } from '../hooks/useEvents';
+ 
+ type ReviewRow = { id: string; jobId: string; status: string; url: string | null; commentsPosted: number; postedAt: number | null };
+ 
++const REVIEWS_QUERIES: QueryKey[] = [['reviews']];
++
+ export function Reviews() {
++  useEvents(REVIEWS_QUERIES);
+   const reviews = useQuery({ queryKey: ['reviews'], queryFn: () => api<{ reviews: ReviewRow[] }>('/api/reviews') });
+ 
+   return (
+     <div className="space-y-6">
+       <div>
+         <h1 className="text-2xl font-semibold tracking-tight text-slate-100">Reviews</h1>
+         <p className="mt-1 text-sm text-slate-400">Histórico de reviews publicadas</p>
+       </div>
+       <Card title="Reviews publicadas">
+         {reviews.isError ? <p className="text-sm text-red-400">Falha ao carregar as reviews.</p> : null}
+diff --git a/src/web/pages/settings/index.tsx b/src/web/pages/settings/index.tsx
+index 5d84de1..b59f031 100644
+--- a/src/web/pages/settings/index.tsx
++++ b/src/web/pages/settings/index.tsx
+@@ -1,27 +1,29 @@
+ import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
+ import { Card } from '../../components/ui';
+ import { useMe } from '../../components/ProtectedRoute';
++import { Audit } from './Audit';
+ import { GithubSettings } from './Github';
+ import { Profiles } from './Profiles';
+ import { Skills } from './Skills';
+ import { Users } from './Users';
+ import { Webhooks } from './Webhooks';
+ import { SystemSettings } from './System';
+ 
+ const tabs = [
+   { to: 'github', label: 'GitHub' },
+   { to: 'ia', label: 'IA' },
+   { to: 'skills', label: 'Skills' },
+   { to: 'usuarios', label: 'Usuários' },
+   { to: 'webhooks', label: 'Webhooks' },
+   { to: 'sistema', label: 'Sistema' },
++  { to: 'auditoria', label: 'Auditoria' },
+ ];
+ 
+ export function SettingsLayout() {
+   const me = useMe();
+ 
+   if (me.isLoading) {
+     return <p className="p-8 text-sm text-slate-500">Carregando…</p>;
+   }
+ 
+   if (!me.data || me.data.role !== 'admin') {
+@@ -60,14 +62,15 @@ export function SettingsLayout() {
+         ))}
+       </nav>
+       <Routes>
+         <Route index element={<Navigate to="/settings/github" replace />} />
+         <Route path="github" element={<GithubSettings />} />
+         <Route path="ia" element={<Profiles />} />
+         <Route path="skills" element={<Skills />} />
+         <Route path="usuarios" element={<Users />} />
+         <Route path="webhooks" element={<Webhooks />} />
+         <Route path="sistema" element={<SystemSettings />} />
++        <Route path="auditoria" element={<Audit />} />
+       </Routes>
+     </div>
+   );
+ }
+
+## New files
+
+
+--- FILE: src/web/hooks/useEvents.ts ---
+
+import { useEffect } from 'react';
+import { useQueryClient, type QueryKey } from '@tanstack/react-query';
+
+export function useEvents(queryKeys: QueryKey[]): void {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (typeof EventSource === 'undefined') {
+      return;
+    }
+
+    const source = new EventSource('/api/events');
+    source.onopen = () => {
+      for (const queryKey of queryKeys) {
+        queryClient.invalidateQueries({ queryKey });
+      }
+    };
+
+    return () => {
+      source.close();
+    };
+  }, [queryClient, queryKeys]);
+}
+
+
+--- FILE: src/web/pages/settings/Audit.tsx ---
+
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../../api';
+import { Button, Card, EmptyState } from '../../components/ui';
+
+type AuditEntry = {
+  id: string;
+  userId: string | null;
+  action: string;
+  targetType: string | null;
+  targetId: string | null;
+  ip: string | null;
+  createdAt: number;
+};
+
+const PAGE_SIZE = 20;
+
+function targetLabel(entry: AuditEntry): string {
+  if (entry.targetType && entry.targetId) {
+    return `${entry.targetType}/${entry.targetId}`;
+  }
+  return entry.targetType ?? entry.targetId ?? '—';
+}
+
+export function Audit() {
+  const [page, setPage] = useState(1);
+  const audit = useQuery({
+    queryKey: ['audit', page],
+    queryFn: () => api<{ entries: AuditEntry[]; total: number }>(`/api/audit?page=${page}&limit=${PAGE_SIZE}`),
+  });
+
+  const entries = audit.data?.entries ?? [];
+  const total = audit.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  return (
+    <Card title="Auditoria">
+      {audit.isError ? <p className="text-sm text-red-400">Falha ao carregar a auditoria.</p> : null}
+      {audit.isLoading ? <p className="text-sm text-slate-500">Carregando…</p> : null}
+      {!audit.isLoading && !audit.isError && entries.length === 0 ? (
+        <EmptyState>Nenhuma entrada de auditoria.</EmptyState>
+      ) : null}
+      {entries.length > 0 ? (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+              <th className="py-2 font-medium">Data</th>
+              <th className="py-2 font-medium">Usuário</th>
+              <th className="py-2 font-medium">Ação</th>
+              <th className="py-2 font-medium">Alvo</th>
+              <th className="py-2 font-medium">IP</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((entry) => (
+              <tr key={entry.id} className="border-t border-slate-800">
+                <td className="py-2 text-slate-300">{new Date(entry.createdAt).toLocaleString('pt-BR')}</td>
+                <td className="py-2 text-slate-300">{entry.userId ?? '—'}</td>
+                <td className="py-2 text-slate-300">{entry.action}</td>
+                <td className="py-2 text-slate-300">{targetLabel(entry)}</td>
+                <td className="py-2 text-slate-300">{entry.ip ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
+      <div className="mt-4 flex items-center justify-between gap-2">
+        <Button type="button" onClick={() => setPage((current) => current - 1)} disabled={page === 1 || audit.isFetching}>
+          Anterior
+        </Button>
+        <span className="text-sm text-slate-400">
+          Página {page} de {totalPages}
+        </span>
+        <Button
+          type="button"
+          onClick={() => setPage((current) => current + 1)}
+          disabled={page * PAGE_SIZE >= total || audit.isFetching}
+        >
+          Próxima
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+
+--- FILE: tests/web/use-events.test.tsx ---
+
+// @vitest-environment jsdom
+import '@testing-library/jest-dom/vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { render } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEvents } from '../../src/web/hooks/useEvents';
+
+class FakeEventSource {
+  static instances: FakeEventSource[] = [];
+
+  readonly url: string;
+  onopen: (() => void) | null = null;
+  closed = false;
+
+  constructor(url: string) {
+    this.url = url;
+    FakeEventSource.instances.push(this);
+  }
+
+  close() {
+    this.closed = true;
+  }
+}
+
+function Probe() {
+  useEvents([['dashboard']]);
+  return null;
+}
+
+function renderProbe(client: QueryClient) {
+  return render(
+    <QueryClientProvider client={client}>
+      <Probe />
+    </QueryClientProvider>,
+  );
+}
+
+describe('useEvents', () => {
+  afterEach(() => {
+    FakeEventSource.instances = [];
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('abre o SSE e invalida as queries no onopen, fechando ao desmontar', () => {
+    vi.stubGlobal('EventSource', FakeEventSource);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+
+    const view = renderProbe(client);
+
+    expect(FakeEventSource.instances).toHaveLength(1);
+    const source = FakeEventSource.instances[0]!;
+    expect(source.url).toBe('/api/events');
+    expect(source.onopen).toBeTypeOf('function');
+
+    source.onopen!();
+
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['dashboard'] });
+
+    view.unmount();
+    expect(source.closed).toBe(true);
+  });
+
+  it('não abre conexão quando EventSource não está disponível', () => {
+    vi.stubGlobal('EventSource', undefined);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+
+    const view = renderProbe(client);
+
+    expect(FakeEventSource.instances).toHaveLength(0);
+    expect(invalidate).not.toHaveBeenCalled();
+
+    view.unmount();
+  });
+});
+
+
+--- FILE: tests/web/audit.test.tsx ---
+
+// @vitest-environment jsdom
+import '@testing-library/jest-dom/vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Audit } from '../../src/web/pages/settings/Audit';
+
+type Entry = {
+  id: string;
+  userId: string | null;
+  action: string;
+  targetType: string | null;
+  targetId: string | null;
+  ip: string | null;
+  createdAt: number;
+};
+
+const base = Date.UTC(2026, 0, 31, 12);
+
+function entry(index: number, createdAt: number): Entry {
+  return {
+    id: `a${index}`,
+    userId: `usuario-${index}`,
+    action: `acao-${index}`,
+    targetType: 'user',
+    targetId: `t${index}`,
+    ip: `10.0.0.${index}`,
+    createdAt,
+  };
+}
+
+const firstPage = Array.from({ length: 20 }, (_, index) => entry(index + 1, base - index * 86_400_000));
+const secondPage = [entry(21, base - 20 * 86_400_000)];
+
+function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), { status });
+}
+
+function renderAudit() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <Audit />
+    </QueryClientProvider>,
+  );
+}
+
+describe('Audit', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('lista entradas paginadas e navega para a próxima página', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/api/audit?page=1&limit=20') {
+        return json({ entries: firstPage, total: 21 });
+      }
+      if (url === '/api/audit?page=2&limit=20') {
+        return json({ entries: secondPage, total: 21 });
+      }
+      return json({ error: { code: 'not_found', message: 'Rota não encontrada' } }, 404);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderAudit();
+
+    expect(await screen.findByText('acao-1')).toBeInTheDocument();
+    expect(screen.getByText('usuario-1')).toBeInTheDocument();
+    expect(screen.getByText('user/t1')).toBeInTheDocument();
+    expect(screen.getByText('10.0.0.1')).toBeInTheDocument();
+    expect(screen.getByText(new Date(firstPage[0]!.createdAt).toLocaleString('pt-BR'))).toBeInTheDocument();
+    expect(screen.getByText('Página 1 de 2')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Anterior' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Próxima' })).toBeEnabled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Próxima' }));
+
+    expect(await screen.findByText('acao-21')).toBeInTheDocument();
+    expect(screen.getByText('usuario-21')).toBeInTheDocument();
+    expect(screen.getByText('user/t21')).toBeInTheDocument();
+    expect(screen.getByText('10.0.0.21')).toBeInTheDocument();
+    expect(screen.getByText('Página 2 de 2')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Anterior' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Próxima' })).toBeDisabled();
+    expect(fetchMock.mock.calls.some(([input]) => String(input) === '/api/audit?page=2&limit=20')).toBe(true);
+  });
+});
+

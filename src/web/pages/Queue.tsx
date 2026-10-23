@@ -1,11 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { api } from '../api';
 import { Button, Card, EmptyState } from '../components/ui';
+import { useEvents } from '../hooks/useEvents';
 
 type QueueData = { queued: number; running: number; paused: boolean };
 type JobRow = { id: string; prTitle: string; prUrl: string; status: string; runSeq: number; queuedAt: number };
 
+const QUEUE_QUERIES: QueryKey[] = [['queue'], ['jobs']];
+
 export function Queue() {
+  useEvents(QUEUE_QUERIES);
   const queryClient = useQueryClient();
   const queue = useQuery({ queryKey: ['queue'], queryFn: () => api<QueueData>('/api/queue') });
   const jobs = useQuery({ queryKey: ['jobs'], queryFn: () => api<{ jobs: JobRow[] }>('/api/jobs') });

@@ -1,6 +1,7 @@
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import { Card } from '../../components/ui';
 import { useMe } from '../../components/ProtectedRoute';
+import { Audit } from './Audit';
 import { GithubSettings } from './Github';
 import { Profiles } from './Profiles';
 import { Skills } from './Skills';
@@ -15,6 +16,7 @@ const tabs = [
   { to: 'usuarios', label: 'Usuários' },
   { to: 'webhooks', label: 'Webhooks' },
   { to: 'sistema', label: 'Sistema' },
+  { to: 'auditoria', label: 'Auditoria' },
 ];
 
 export function SettingsLayout() {
@@ -67,6 +69,7 @@ export function SettingsLayout() {
         <Route path="usuarios" element={<Users />} />
         <Route path="webhooks" element={<Webhooks />} />
         <Route path="sistema" element={<SystemSettings />} />
+        <Route path="auditoria" element={<Audit />} />
       </Routes>
     </div>
   );

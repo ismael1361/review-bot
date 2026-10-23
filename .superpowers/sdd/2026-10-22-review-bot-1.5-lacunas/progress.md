@@ -15,5 +15,7 @@ G3: minor (deferred): números vazios viram 0 em Profiles; apiKey enviada sem tr
 G4: complete (review clean, sem Critical/Important; focados 12/12, suíte 130/130, typecheck/lint/build limpos; sem commits).
 G4: minor (deferred): avisos de sucesso não são limpos por ações seguintes em Users/Webhooks; uma mutation desabilita controles de todas as linhas; submit de senha sem guarda de duplo clique; cobertura ausente de validação local de reset, falha de papel, feedback ok=true e data das entregas; messageFor duplicado.
 G4: preflight — Users.tsx e Webhooks.tsx existentes serão estendidos; app.tsx ganha rota /password; Layout ganha link; rotas de servidor já existentes cobrem todas as ações (PATCH/POST/DELETE/GET), sem mudanças de API previstas. Sem conflito com G5 (useEvents/Audit ficam para depois).
-G5: pendente.
+G5: complete (review clean, sem Critical/Important; focados 4/4, suíte 133/133, typecheck/lint/build limpos; sem commits).
+G5: minor (deferred): rodapé da auditoria mostra "Página N de 1" durante fetch/erro de página; chaves de query duplicadas entre as constantes SSE e useQuery; cobertura ausente de erro/vazio da auditoria e de invalidação multi-chave.
+G5: preflight — hook novo; três páginas ganham chamada; Audit.tsx novo; settings/index.tsx ganha aba/rota; testes novos para hook e auditoria. A rota /api/audit já entrega { entries, total } paginado e admin-only. EventSource não existe em jsdom, então o hook precisa de guarda. Sem conflito com G1-G4.
 

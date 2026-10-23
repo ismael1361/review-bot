@@ -1,10 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type QueryKey } from '@tanstack/react-query';
 import { api } from '../api';
 import { Card, EmptyState } from '../components/ui';
+import { useEvents } from '../hooks/useEvents';
 
 type ReviewRow = { id: string; jobId: string; status: string; url: string | null; commentsPosted: number; postedAt: number | null };
 
+const REVIEWS_QUERIES: QueryKey[] = [['reviews']];
+
 export function Reviews() {
+  useEvents(REVIEWS_QUERIES);
   const reviews = useQuery({ queryKey: ['reviews'], queryFn: () => api<{ reviews: ReviewRow[] }>('/api/reviews') });
 
   return (
