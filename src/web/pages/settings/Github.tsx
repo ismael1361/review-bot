@@ -25,20 +25,20 @@ export function GithubSettings() {
   return (
     <Card title="Conta GitHub">
       {current.isError ? (
-        <p className="mb-3 text-sm text-red-400">Falha ao carregar a credencial.</p>
+        <p className="mb-3 text-sm text-[var(--link)]">Falha ao carregar a credencial.</p>
       ) : (
-        <p className="mb-3 text-sm text-slate-400">
+        <p className="mb-3 text-sm text-[var(--text-muted)]">
           {current.data?.credentials
             ? `Conectado como ${current.data.credentials.login} (token ••••${current.data.credentials.patLast4})`
             : 'Nenhuma credencial configurada.'}
         </p>
       )}
       <ErrorText>{error}</ErrorText>
-      {message ? <p className="mb-3 text-sm text-emerald-400">{message}</p> : null}
+      {message ? <p className="mb-3 text-sm text-[var(--tertiary-hover)]">{message}</p> : null}
       <Field label="Personal Access Token">
         <Input type="password" value={pat} onChange={(event) => setPat(event.target.value)} placeholder="ghp_..." />
       </Field>
-      <p className="mb-3 text-xs text-slate-500">
+      <p className="mb-3 text-xs text-[var(--text-muted)]">
         Fine-grained: Metadata read, Contents read, Pull requests read/write.
       </p>
       <Button

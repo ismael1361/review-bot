@@ -35,15 +35,15 @@ export function Audit() {
 
   return (
     <Card title="Auditoria">
-      {audit.isError ? <p className="text-sm text-red-400">Falha ao carregar a auditoria.</p> : null}
-      {audit.isLoading ? <p className="text-sm text-slate-500">Carregando…</p> : null}
+      {audit.isError ? <p className="text-sm text-[var(--link)]">Falha ao carregar a auditoria.</p> : null}
+      {audit.isLoading ? <p className="text-sm text-[var(--text-muted)]">Carregando…</p> : null}
       {!audit.isLoading && !audit.isError && entries.length === 0 ? (
         <EmptyState>Nenhuma entrada de auditoria.</EmptyState>
       ) : null}
       {entries.length > 0 ? (
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr className="text-left text-xs uppercase tracking-wide text-[var(--text-muted)]">
               <th className="py-2 font-medium">Data</th>
               <th className="py-2 font-medium">Usuário</th>
               <th className="py-2 font-medium">Ação</th>
@@ -53,12 +53,12 @@ export function Audit() {
           </thead>
           <tbody>
             {entries.map((entry) => (
-              <tr key={entry.id} className="border-t border-slate-800">
-                <td className="py-2 text-slate-300">{new Date(entry.createdAt).toLocaleString('pt-BR')}</td>
-                <td className="py-2 text-slate-300">{entry.userId ?? '—'}</td>
-                <td className="py-2 text-slate-300">{entry.action}</td>
-                <td className="py-2 text-slate-300">{targetLabel(entry)}</td>
-                <td className="py-2 text-slate-300">{entry.ip ?? '—'}</td>
+              <tr key={entry.id} className="border-t border-[var(--border)]">
+                <td className="py-2 text-[var(--text)]">{new Date(entry.createdAt).toLocaleString('pt-BR')}</td>
+                <td className="py-2 text-[var(--text)]">{entry.userId ?? '—'}</td>
+                <td className="py-2 text-[var(--text)]">{entry.action}</td>
+                <td className="py-2 text-[var(--text)]">{targetLabel(entry)}</td>
+                <td className="py-2 text-[var(--text)]">{entry.ip ?? '—'}</td>
               </tr>
             ))}
           </tbody>
@@ -68,7 +68,7 @@ export function Audit() {
         <Button type="button" onClick={() => setPage((current) => current - 1)} disabled={page === 1 || audit.isFetching}>
           Anterior
         </Button>
-        <span className="text-sm text-slate-400">
+        <span className="text-sm text-[var(--text-muted)]">
           Página {page} de {totalPages}
         </span>
         <Button

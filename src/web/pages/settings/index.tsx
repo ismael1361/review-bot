@@ -23,18 +23,18 @@ export function SettingsLayout() {
   const me = useMe();
 
   if (me.isLoading) {
-    return <p className="p-8 text-sm text-slate-500">Carregando…</p>;
+    return <p className="p-8 text-sm text-[var(--text-muted)]">Carregando…</p>;
   }
 
   if (!me.data || me.data.role !== 'admin') {
     return (
       <div className="space-y-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-100">Acesso restrito</h1>
-          <p className="mt-1 text-sm text-slate-400">Apenas administradores podem acessar as definições.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">Acesso restrito</h1>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">Apenas administradores podem acessar as definições.</p>
         </div>
         <Card>
-          <p className="text-sm text-slate-400">Solicite a um administrador a alteração de permissões do seu usuário.</p>
+          <p className="text-sm text-[var(--text-muted)]">Solicite a um administrador a alteração de permissões do seu usuário.</p>
         </Card>
       </div>
     );
@@ -43,18 +43,18 @@ export function SettingsLayout() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-100">Definições</h1>
-        <p className="mt-1 text-sm text-slate-400">Credenciais, perfis e integrações</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">Definições</h1>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">Credenciais, perfis e integrações</p>
       </div>
-      <nav className="flex flex-wrap gap-1 border-b border-slate-800 text-sm">
+      <nav className="flex flex-wrap gap-1 border-b border-[var(--border)] text-sm">
         {tabs.map((tab) => (
           <NavLink
             key={tab.to}
             to={`/settings/${tab.to}`}
             className={({ isActive }) =>
               isActive
-                ? '-mb-px border-b-2 border-sky-400 px-3 py-2 font-semibold text-slate-100'
-                : '-mb-px border-b-2 border-transparent px-3 py-2 text-slate-400 transition hover:text-slate-200'
+                ? '-mb-px border-b-2 border-[var(--primary)] px-3 py-2 font-semibold text-[var(--text)]'
+                : '-mb-px border-b-2 border-transparent px-3 py-2 text-[var(--text-muted)] transition hover:text-[var(--text)]'
             }
           >
             {tab.label}

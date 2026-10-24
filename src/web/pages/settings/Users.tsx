@@ -7,9 +7,9 @@ type Role = 'admin' | 'operator' | 'viewer';
 type UserRow = { id: string; username: string; role: Role; isRoot: boolean; disabled: boolean };
 
 const selectClass =
-  'w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/40';
+  'w-full rounded-lg border border-[var(--border-strong)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40';
 const rowSelectClass =
-  'rounded-lg border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-slate-100 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/40';
+  'rounded-lg border border-[var(--border-strong)] bg-[var(--bg)] px-2 py-1.5 text-sm text-[var(--text)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40';
 
 function messageFor(error: unknown, fallback: string): string {
   return error instanceof ApiRequestError ? error.message : fallback;
@@ -90,13 +90,13 @@ export function Users() {
     <div className="space-y-4">
       <Card title="Usuários">
         <ErrorText>{error}</ErrorText>
-        {notice ? <p className="mb-3 text-sm text-emerald-400">{notice}</p> : null}
-        {users.isError ? <p className="mb-2 text-sm text-red-400">Falha ao carregar os usuários.</p> : null}
-        <ul className="divide-y divide-slate-800 text-sm">
+        {notice ? <p className="mb-3 text-sm text-[var(--tertiary-hover)]">{notice}</p> : null}
+        {users.isError ? <p className="mb-2 text-sm text-[var(--link)]">Falha ao carregar os usuários.</p> : null}
+        <ul className="divide-y divide-[var(--border)] text-sm">
           {users.data?.users.map((user) => (
             <li key={user.id} className="py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-slate-300">
+                <span className="text-[var(--text)]">
                   {user.username} · {user.role}
                   {user.isRoot ? ' · root' : ''}
                   {user.disabled ? ' · desativado' : ''}
@@ -124,7 +124,7 @@ export function Users() {
                 )}
               </div>
               {resetFor === user.id ? (
-                <div className="mt-3 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--sunken)] p-3">
                   <Field label={`Nova senha de ${user.username}`}>
                     <Input
                       type="password"
@@ -141,7 +141,7 @@ export function Users() {
                       type="button"
                       onClick={cancelReset}
                       disabled={reset.isPending}
-                      className="bg-slate-700 text-slate-100 hover:bg-slate-600"
+                      variant="secondary"
                     >
                       Cancelar
                     </Button>

@@ -1,9 +1,9 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 
 export function Card({ title, children }: { title?: string; children: ReactNode }) {
   return (
-    <section className="rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-lg shadow-black/20">
-      {title ? <h2 className="mb-3 text-sm font-semibold tracking-wide text-slate-200">{title}</h2> : null}
+    <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-lg shadow-black/20">
+      {title ? <h2 className="mb-3 text-sm font-semibold tracking-wide text-[var(--text)]">{title}</h2> : null}
       {children}
     </section>
   );
@@ -12,7 +12,7 @@ export function Card({ title, children }: { title?: string; children: ReactNode 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="mb-3 block text-sm">
-      <span className="mb-1 block font-medium text-slate-300">{label}</span>
+      <span className="mb-1 block font-medium text-[var(--text)]">{label}</span>
       {children}
     </label>
   );
@@ -22,16 +22,24 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return (
     <input
       {...props}
-      className={`w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/40 disabled:opacity-50 ${className ?? ''}`}
+      className={`w-full rounded-lg border border-[var(--border-strong)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40 disabled:opacity-50 ${className ?? ""}`}
     />
   );
 }
 
-export function Button({ children, className, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
+type ButtonVariant = "primary" | "secondary" | "danger";
+
+const buttonVariants: Record<ButtonVariant, string> = {
+  primary: "bg-[var(--primary)] text-[var(--on-primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)]",
+  secondary: "border border-[var(--border-strong)] bg-[var(--bg)] text-[var(--text)] hover:bg-[var(--border)]",
+  danger: "border border-[var(--primary)] bg-transparent text-[var(--link)] hover:bg-[var(--primary)] hover:text-[var(--on-primary)] active:bg-[var(--primary-active)]",
+};
+
+export function Button({ children, className, variant = "primary", ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
   return (
     <button
       {...props}
-      className={`rounded-lg bg-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-50 ${className ?? ''}`}
+      className={`rounded-lg px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50 ${buttonVariants[variant]} ${className ?? ""}`}
     >
       {children}
     </button>
@@ -40,12 +48,12 @@ export function Button({ children, className, ...props }: ButtonHTMLAttributes<H
 
 export function ErrorText({ children }: { children: ReactNode }) {
   return children ? (
-    <p role="alert" className="mb-3 text-sm text-red-400">
+    <p role="alert" className="mb-3 text-sm text-[var(--link)]">
       {children}
     </p>
   ) : null;
 }
 
 export function EmptyState({ children }: { children: ReactNode }) {
-  return <p className="py-8 text-center text-sm text-slate-500">{children}</p>;
+  return <p className="py-8 text-center text-sm text-[var(--text-muted)]">{children}</p>;
 }

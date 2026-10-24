@@ -29,7 +29,7 @@ export function SystemSettings() {
   if (!form) {
     return (
       <Card title="Sistema">
-        <p className={`text-sm ${settings.isError ? 'text-red-400' : 'text-slate-500'}`}>
+        <p className={`text-sm ${settings.isError ? 'text-[var(--link)]' : 'text-[var(--text-muted)]'}`}>
           {settings.isError ? 'Falha ao carregar as configurações.' : 'Carregando…'}
         </p>
       </Card>
@@ -60,19 +60,19 @@ export function SystemSettings() {
           onChange={(event) => setForm({ ...form, concurrency: Number(event.target.value) })}
         />
       </Field>
-      <label className="mb-2 flex items-center gap-2 text-sm text-slate-300">
+      <label className="mb-2 flex items-center gap-2 text-sm text-[var(--text)]">
         <input
           type="checkbox"
-          className="accent-sky-400"
+          className="accent-[var(--primary)]"
           checked={form.ignoreDrafts}
           onChange={(event) => setForm({ ...form, ignoreDrafts: event.target.checked })}
         />
         Ignorar PRs em rascunho
       </label>
-      <label className="mb-3 flex items-center gap-2 text-sm text-slate-300">
+      <label className="mb-3 flex items-center gap-2 text-sm text-[var(--text)]">
         <input
           type="checkbox"
-          className="accent-sky-400"
+          className="accent-[var(--primary)]"
           checked={form.skipOwnPrs}
           onChange={(event) => setForm({ ...form, skipOwnPrs: event.target.checked })}
         />

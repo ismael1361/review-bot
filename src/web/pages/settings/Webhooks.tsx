@@ -31,29 +31,29 @@ function Deliveries({ webhookId }: { webhookId: string }) {
   });
 
   if (deliveries.isLoading) {
-    return <p className="mt-2 text-xs text-slate-500">Carregando entregas…</p>;
+    return <p className="mt-2 text-xs text-[var(--text-muted)]">Carregando entregas…</p>;
   }
   if (deliveries.isError) {
-    return <p className="mt-2 text-xs text-red-400">Falha ao carregar as entregas.</p>;
+    return <p className="mt-2 text-xs text-[var(--link)]">Falha ao carregar as entregas.</p>;
   }
 
   const rows = deliveries.data?.deliveries ?? [];
   if (rows.length === 0) {
-    return <p className="mt-2 text-xs text-slate-500">Nenhuma entrega registrada.</p>;
+    return <p className="mt-2 text-xs text-[var(--text-muted)]">Nenhuma entrega registrada.</p>;
   }
 
   return (
     <ul
       aria-label="Últimas entregas"
-      className="mt-3 divide-y divide-slate-800 rounded-lg border border-slate-800 bg-slate-950/60 text-xs"
+      className="mt-3 divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] bg-[var(--sunken)] text-xs"
     >
       {rows.map((delivery) => (
-        <li key={delivery.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-slate-400">
-          <span className="font-medium text-slate-300">{delivery.event}</span>
-          <span className={delivery.success ? 'text-emerald-400' : 'text-red-400'}>{delivery.success ? 'sucesso' : 'falha'}</span>
+        <li key={delivery.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-[var(--text-muted)]">
+          <span className="font-medium text-[var(--text)]">{delivery.event}</span>
+          <span className={delivery.success ? 'text-[var(--tertiary-hover)]' : 'text-[var(--link)]'}>{delivery.success ? 'sucesso' : 'falha'}</span>
           <span>status {delivery.statusCode ?? '—'}</span>
           <span>tentativa {delivery.attempt}</span>
-          <span className="text-slate-500">{new Date(delivery.createdAt).toLocaleString('pt-BR')}</span>
+          <span className="text-[var(--text-muted)]">{new Date(delivery.createdAt).toLocaleString('pt-BR')}</span>
         </li>
       ))}
     </ul>
@@ -190,19 +190,19 @@ export function Webhooks() {
     <div className="space-y-4">
       <Card title="Webhooks">
         <ErrorText>{error}</ErrorText>
-        {notice ? <p className="mb-3 text-sm text-emerald-400">{notice}</p> : null}
+        {notice ? <p className="mb-3 text-sm text-[var(--tertiary-hover)]">{notice}</p> : null}
         {secret ? (
-          <p className="mb-3 rounded-lg border border-amber-900 bg-amber-950 px-3 py-2 text-sm text-amber-300">
+          <p className="mb-3 rounded-lg border border-[var(--secondary)] bg-[var(--sunken)] px-3 py-2 text-sm text-[var(--secondary-hover)]">
             Secret gerado (exibido uma única vez): <code className="font-mono text-xs">{secret}</code>
           </p>
         ) : null}
-        {webhooks.isError ? <p className="mb-2 text-sm text-red-400">Falha ao carregar os webhooks.</p> : null}
-        <ul className="divide-y divide-slate-800 text-sm">
+        {webhooks.isError ? <p className="mb-2 text-sm text-[var(--link)]">Falha ao carregar os webhooks.</p> : null}
+        <ul className="divide-y divide-[var(--border)] text-sm">
           {webhooks.data?.webhooks.map((webhook) => (
             <li key={webhook.id} className="py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-slate-300">
-                  {webhook.url} · <span className="text-slate-500">{webhook.events.join(', ')}</span>
+                <span className="text-[var(--text)]">
+                  {webhook.url} · <span className="text-[var(--text-muted)]">{webhook.events.join(', ')}</span>
                   {webhook.enabled ? '' : ' · desativado'}
                 </span>
                 <span className="flex flex-wrap gap-2">
@@ -219,7 +219,7 @@ export function Webhooks() {
                     type="button"
                     onClick={() => confirmRemove(webhook)}
                     disabled={remove.isPending}
-                    className="bg-red-950 text-red-200 hover:bg-red-900"
+                    variant="danger"
                   >
                     {remove.isPending && remove.variables === webhook.id ? 'Excluindo…' : 'Excluir'}
                   </Button>
@@ -228,21 +228,21 @@ export function Webhooks() {
               {deliveriesFor === webhook.id ? <Deliveries webhookId={webhook.id} /> : null}
             </li>
           ))}
-          {webhooks.data && webhooks.data.webhooks.length === 0 ? <li className="py-4 text-slate-500">Nenhum webhook ainda.</li> : null}
+          {webhooks.data && webhooks.data.webhooks.length === 0 ? <li className="py-4 text-[var(--text-muted)]">Nenhum webhook ainda.</li> : null}
         </ul>
-        {testMessage ? <p className={`mt-2 text-sm ${testOk ? 'text-emerald-400' : 'text-red-400'}`}>{testMessage}</p> : null}
+        {testMessage ? <p className={`mt-2 text-sm ${testOk ? 'text-[var(--tertiary-hover)]' : 'text-[var(--link)]'}`}>{testMessage}</p> : null}
       </Card>
       <Card title={editingId ? 'Editar webhook' : 'Novo webhook'}>
         <Field label="URL">
           <Input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://..." />
         </Field>
         <fieldset className="mb-3 text-sm">
-          <legend className="mb-1 font-medium text-slate-300">Eventos</legend>
+          <legend className="mb-1 font-medium text-[var(--text)]">Eventos</legend>
           {ALL_EVENTS.map((event) => (
-            <label key={event} className="mr-3 inline-flex items-center gap-1 text-slate-400">
+            <label key={event} className="mr-3 inline-flex items-center gap-1 text-[var(--text-muted)]">
               <input
                 type="checkbox"
-                className="accent-sky-400"
+                className="accent-[var(--primary)]"
                 checked={events.includes(event)}
                 onChange={(changeEvent) => setEvents(changeEvent.target.checked ? [...events, event] : events.filter((item) => item !== event))}
               />
@@ -261,8 +261,8 @@ export function Webhooks() {
                 onChange={(event) => setNewSecret(event.target.value)}
               />
             </Field>
-            <label className="mb-3 flex items-center gap-2 text-sm text-slate-300">
-              <input type="checkbox" className="accent-sky-400" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
+            <label className="mb-3 flex items-center gap-2 text-sm text-[var(--text)]">
+              <input type="checkbox" className="accent-[var(--primary)]" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
               Ativo
             </label>
           </>
@@ -272,7 +272,7 @@ export function Webhooks() {
             {saving ? 'Salvando…' : editingId ? 'Salvar webhook' : 'Criar webhook'}
           </Button>
           {editingId ? (
-            <Button type="button" onClick={resetEdit} disabled={saving} className="bg-slate-700 text-slate-100 hover:bg-slate-600">
+            <Button type="button" onClick={resetEdit} disabled={saving} variant="secondary">
               Cancelar
             </Button>
           ) : null}

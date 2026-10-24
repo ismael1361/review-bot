@@ -36,13 +36,13 @@ export function Password() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-100">Senha</h1>
-        <p className="mt-1 text-sm text-slate-400">Altere a senha da sua conta</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">Senha</h1>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">Altere a senha da sua conta</p>
       </div>
       <form onSubmit={submit} className="max-w-xl">
         <Card title="Alterar senha">
           <ErrorText>{error}</ErrorText>
-          {notice ? <p className="mb-3 text-sm text-emerald-400">{notice}</p> : null}
+          {notice ? <p className="mb-3 text-sm text-[var(--tertiary-hover)]">{notice}</p> : null}
           <Field label="Senha atual">
             <Input
               type="password"

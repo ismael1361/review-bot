@@ -1,10 +1,11 @@
 @import "tailwindcss";
+@import "./theme.css";
 
 :root {
-  color-scheme: dark;
+  color-scheme: light dark;
 }
 
 body {
-  background-color: #020617;
-  color: #e2e8f0;
+  background-color: var(--bg);
+  color: var(--text);
 }

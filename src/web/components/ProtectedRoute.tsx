@@ -15,7 +15,7 @@ export function useMe() {
 export function ProtectedRoute() {
   const me = useMe();
   if (me.isLoading) {
-    return <p className="p-8 text-sm text-slate-500">Carregando…</p>;
+    return <p className="p-8 text-sm text-[var(--text-muted)]">Carregando…</p>;
   }
   if (me.isError || !me.data) {
     return <Navigate to="/login" replace />;

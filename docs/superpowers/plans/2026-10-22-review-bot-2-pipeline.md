@@ -556,7 +556,7 @@ Expected: todos verdes.
 - Consumes: `Db`, `EventBus`, `jobs`, `repositories`, `getGithubCredentials`, `GitHubError`, `AppError`.
 - Produces: `claimNextJob(db, workerId, now?): JobRow | undefined`; `heartbeat(db, jobId, now?)`; `recoverOrphans(db, staleMs?, now?): number`; `cancelJob(db, jobId, now?): boolean`; `retryJob(db, jobId, now?): boolean`; `isJobCancelled(db, jobId): boolean`; `enqueueManual(deps, { repoFullName, prNumber, force? }): Promise<string>`; `queueDepth(db): { queued: number; running: number }`; `createWorker(deps, workerId)` com `tick()`, `start()`, `stop()`; `RetryableJobError`.
 
-- [ ] **Step 1: Implementar `src/jobs/queue.ts`**
+- [x] **Step 1: Implementar `src/jobs/queue.ts`**
 
 ```ts
 import { and, asc, count, desc, eq, isNull, lte, or, sql } from 'drizzle-orm';
@@ -693,7 +693,7 @@ export function scheduleRetry(db: Db, jobId: string, delayMs: number, errorCode:
 export const RETRY_DELAYS_MS = [30_000, 120_000, 480_000];
 ```
 
-- [ ] **Step 2: Implementar `src/jobs/worker.ts`**
+- [x] **Step 2: Implementar `src/jobs/worker.ts`**
 
 ```ts
 import type { Logger } from 'pino';
@@ -773,7 +773,7 @@ export function createWorker(deps: WorkerDeps, workerId: string): { tick: () => 
 }
 ```
 
-- [ ] **Step 3: Escrever `tests/integration/queue.test.ts`**
+- [x] **Step 3: Escrever `tests/integration/queue.test.ts`**
 
 ```ts
 import { describe, expect, it, vi } from 'vitest';
@@ -833,12 +833,12 @@ describe('fila', () => {
 });
 ```
 
-- [ ] **Step 4: Rodar e verificar**
+- [x] **Step 4: Rodar e verificar**
 
 Run: `yarn test tests/integration/queue.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Checkpoint**
+- [x] **Step 5: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes.
@@ -855,7 +855,7 @@ Expected: todos verdes.
 - Consumes: `testConnection` existente.
 - Produces: `ToolSpec`, `ChatMessage`, `ChatInput`, `ChatResult`, `ProviderError`; `ProviderAdapter.chat(input, fetchImpl?): Promise<ChatResult>`.
 
-- [ ] **Step 1: Estender `src/ai/adapters/types.ts`**
+- [x] **Step 1: Estender `src/ai/adapters/types.ts`**
 
 ```ts
 export type ToolSpec = { name: string; description: string; parameters: Record<string, unknown> };
@@ -896,7 +896,7 @@ export type ProviderAdapter = {
 };
 ```
 
-- [ ] **Step 2: Implementar `chat` nos dois adaptadores**
+- [x] **Step 2: Implementar `chat` nos dois adaptadores**
 
 Em `openai-compatible.ts` (além do `testConnection` existente):
 
@@ -1028,7 +1028,7 @@ export async function anthropicChat(input: ChatInput, fetchImpl?: typeof fetch):
 
 E adicionar `chat: anthropicChat` ao `anthropicAdapter`.
 
-- [ ] **Step 3: Escrever `tests/unit/adapters-chat.test.ts`**
+- [x] **Step 3: Escrever `tests/unit/adapters-chat.test.ts`**
 
 ```ts
 import { describe, expect, it, vi } from 'vitest';
@@ -1088,12 +1088,12 @@ describe('chat anthropic', () => {
 });
 ```
 
-- [ ] **Step 4: Rodar e verificar**
+- [x] **Step 4: Rodar e verificar**
 
 Run: `yarn test tests/unit/adapters-chat.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Checkpoint**
+- [x] **Step 5: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes.
@@ -1109,7 +1109,7 @@ Expected: todos verdes.
 **Interfaces:**
 - Produces: `DiffLine`, `DiffHunk`, `parseFilePatch(patch)`, `validRightLines(hunks)`, `targetHunk(hunks, line)`, `renderDiffSnippet(hunks, line, context)`, `redactSecrets(text)`.
 
-- [ ] **Step 1: Implementar `src/github/diff.ts`**
+- [x] **Step 1: Implementar `src/github/diff.ts`**
 
 ```ts
 export type DiffLine = { type: 'context' | 'add' | 'del'; oldLine: number | null; newLine: number | null; text: string };
@@ -1182,7 +1182,7 @@ export function renderDiffSnippet(hunks: DiffHunk[], line: number, context = 3):
 }
 ```
 
-- [ ] **Step 2: Implementar `src/shared/redact.ts`**
+- [x] **Step 2: Implementar `src/shared/redact.ts`**
 
 ```ts
 const PATTERNS: RegExp[] = [
@@ -1208,7 +1208,7 @@ export function redactSecrets(text: string): { text: string; redacted: boolean }
 }
 ```
 
-- [ ] **Step 3: Escrever os testes**
+- [x] **Step 3: Escrever os testes**
 
 `tests/unit/diff.test.ts`:
 
@@ -1280,12 +1280,12 @@ describe('redactSecrets', () => {
 });
 ```
 
-- [ ] **Step 4: Rodar e verificar**
+- [x] **Step 4: Rodar e verificar**
 
 Run: `yarn test tests/unit/diff.test.ts tests/unit/redact.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Checkpoint**
+- [x] **Step 5: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes.
@@ -1302,7 +1302,7 @@ Expected: todos verdes.
 - Consumes: `Db`, `jobs`, `reviewFindings`, `validRightLines`, `DiffHunk`, `githubJson`, `redactSecrets`.
 - Produces: `addFinding(db, jobId, input, ctx: { validLines: Set<number>; filePaths: Set<string>; maxFindings: number }): { findingId: string; status: 'valid' | 'outside_diff' }`; `addGeneralFinding(db, jobId, input, maxFindings): string`; `listFindings(db, jobId)`; `toolSpecs`; `executeTool(name, argsJson, ctx)`; `ToolError`; `ToolContext`.
 
-- [ ] **Step 1: Implementar `src/jobs/findings.ts`**
+- [x] **Step 1: Implementar `src/jobs/findings.ts`**
 
 ```ts
 import { and, count, eq } from 'drizzle-orm';
@@ -1406,7 +1406,7 @@ export function listFindings(db: Db, jobId: string) {
 }
 ```
 
-- [ ] **Step 2: Implementar `src/ai/tools.ts`**
+- [x] **Step 2: Implementar `src/ai/tools.ts`**
 
 ```ts
 import { z } from 'zod';
@@ -1590,7 +1590,7 @@ export async function executeTool(name: string, argsJson: string, ctx: ToolConte
 
 Nota: adicionar `import { eq } from 'drizzle-orm'` e `import { jobs } from '../db/schema'` no topo de `src/ai/tools.ts`.
 
-- [ ] **Step 3: Escrever os testes**
+- [x] **Step 3: Escrever os testes**
 
 `tests/unit/findings.test.ts`:
 
@@ -1698,12 +1698,12 @@ describe('tools', () => {
 });
 ```
 
-- [ ] **Step 4: Rodar e verificar**
+- [x] **Step 4: Rodar e verificar**
 
 Run: `yarn test tests/unit/findings.test.ts tests/unit/tools.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Checkpoint**
+- [x] **Step 5: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes.

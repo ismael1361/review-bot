@@ -14,17 +14,17 @@ export function Reviews() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-100">Reviews</h1>
-        <p className="mt-1 text-sm text-slate-400">Histórico de reviews publicadas</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">Reviews</h1>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">Histórico de reviews publicadas</p>
       </div>
       <Card title="Reviews publicadas">
-        {reviews.isError ? <p className="text-sm text-red-400">Falha ao carregar as reviews.</p> : null}
+        {reviews.isError ? <p className="text-sm text-[var(--link)]">Falha ao carregar as reviews.</p> : null}
         {reviews.data && reviews.data.reviews.length === 0 ? (
           <EmptyState>Nenhuma review ainda. As reviews aparecerão aqui quando o pipeline estiver ativo.</EmptyState>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr className="text-left text-xs uppercase tracking-wide text-[var(--text-muted)]">
                 <th className="py-2 font-medium">Status</th>
                 <th className="py-2 font-medium">Comentários</th>
                 <th className="py-2 font-medium">Link</th>
@@ -32,16 +32,16 @@ export function Reviews() {
             </thead>
             <tbody>
               {reviews.data?.reviews.map((review) => (
-                <tr key={review.id} className="border-t border-slate-800">
-                  <td className="py-2 text-slate-300">{review.status}</td>
-                  <td className="py-2 text-slate-300">{review.commentsPosted}</td>
+                <tr key={review.id} className="border-t border-[var(--border)]">
+                  <td className="py-2 text-[var(--text)]">{review.status}</td>
+                  <td className="py-2 text-[var(--text)]">{review.commentsPosted}</td>
                   <td className="py-2">
                     {review.url ? (
-                      <a className="text-sky-400 underline-offset-2 hover:underline" href={review.url}>
+                      <a className="text-[var(--link)] underline-offset-2 hover:underline" href={review.url}>
                         abrir
                       </a>
                     ) : (
-                      <span className="text-slate-500">—</span>
+                      <span className="text-[var(--text-muted)]">—</span>
                     )}
                   </td>
                 </tr>

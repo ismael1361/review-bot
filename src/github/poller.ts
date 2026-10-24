@@ -10,7 +10,7 @@ import { getGithubCredentials } from './credentials';
 import { GitHubError, githubJson, paginate } from './client';
 import { getSystemSettings } from '../api/routes/settings-system';
 import { isQueuePaused } from '../api/routes/queue';
-import { getActiveProfile } from '../ai/profiles';
+import { getActiveProfile, profileSnapshotJson } from '../ai/profiles';
 import { dispatchEvent } from '../webhooks/dispatcher';
 
 export type PollerDeps = {
@@ -36,7 +36,6 @@ type PullInfo = {
   user: { login: string };
 };
 type EventLevel = 'info' | 'warn' | 'error';
-type ActiveProfile = NonNullable<ReturnType<typeof getActiveProfile>>;
 
 const SEARCH_PATH = '/search/issues?q=is:pr+is:open+review-requested:@me&sort=updated';
 
@@ -44,24 +43,6 @@ function emit(deps: PollerDeps, jobId: string | null, type: string, message: str
   const now = (deps.now ?? Date.now)();
   deps.db.insert(events).values({ id: uuidv7(), jobId, level, type, message, dataJson: data === undefined ? null : JSON.stringify(data), createdAt: now }).run();
   deps.bus.publish({ type, data: data ?? { message }, at: now });
-}
-
-function snapshotProfile(profile: ActiveProfile): string {
-  return JSON.stringify({
-    id: profile.id,
-    name: profile.name,
-    provider: profile.provider,
-    baseUrl: profile.baseUrl,
-    model: profile.model,
-    temperature: profile.temperature,
-    maxOutputTokens: profile.maxOutputTokens,
-    maxTurns: profile.maxTurns,
-    maxTotalTokens: profile.maxTotalTokens,
-    maxDurationSec: profile.maxDurationSec,
-    maxFindings: profile.maxFindings,
-    maxGithubCalls: profile.maxGithubCalls,
-    prePrompt: profile.prePrompt,
-  });
 }
 
 async function handlePollError(deps: PollerDeps, error: GitHubError, result: PollResult): Promise<PollResult | undefined> {
@@ -207,7 +188,7 @@ export async function pollOnce(deps: PollerDeps): Promise<PollResult> {
           attempts: 0,
           maxAttempts: 3,
           profileId: profile.id,
-          profileSnapshotJson: snapshotProfile(profile),
+          profileSnapshotJson: profileSnapshotJson(profile),
           queuedAt: now,
           nextAttemptAt: now,
         })

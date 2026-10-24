@@ -61,11 +61,11 @@ const EMPTY_FORM: ProfileForm = {
 };
 
 const selectClass =
-  'w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/40';
+  'w-full rounded-lg border border-[var(--border-strong)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40';
 const textareaClass =
-  'w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/40';
-const badgeClass = 'ml-2 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-300';
-const activeBadgeClass = 'ml-2 rounded-full bg-emerald-950 px-2 py-0.5 text-xs text-emerald-300';
+  'w-full rounded-lg border border-[var(--border-strong)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40';
+const badgeClass = 'ml-2 rounded-full bg-[var(--sunken)] px-2 py-0.5 text-xs text-[var(--text)]';
+const activeBadgeClass = 'ml-2 rounded-full bg-[var(--tertiary)] px-2 py-0.5 text-xs text-[var(--on-tertiary)]';
 
 function messageFor(error: unknown, fallback: string): string {
   return error instanceof ApiRequestError ? error.message : fallback;
@@ -112,8 +112,8 @@ function ProfileCheckbox({
   onToggle: (checked: boolean) => void;
 }) {
   return (
-    <label className="mr-4 inline-flex items-center gap-2 text-slate-300">
-      <input type="checkbox" name="skillIds" className="accent-sky-400" checked={checked} onChange={(event) => onToggle(event.target.checked)} />
+    <label className="mr-4 inline-flex items-center gap-2 text-[var(--text)]">
+      <input type="checkbox" name="skillIds" className="accent-[var(--primary)]" checked={checked} onChange={(event) => onToggle(event.target.checked)} />
       {skill.name}
     </label>
   );
@@ -290,14 +290,14 @@ export function Profiles() {
   return (
     <div className="space-y-4">
       <Card title="Perfis de IA">
-        {profiles.isError ? <p className="mb-2 text-sm text-red-400">Falha ao carregar os perfis.</p> : null}
-        {profiles.isLoading ? <p className="py-4 text-sm text-slate-500">Carregando perfis…</p> : null}
-        <ul className="divide-y divide-slate-800 text-sm">
+        {profiles.isError ? <p className="mb-2 text-sm text-[var(--link)]">Falha ao carregar os perfis.</p> : null}
+        {profiles.isLoading ? <p className="py-4 text-sm text-[var(--text-muted)]">Carregando perfis…</p> : null}
+        <ul className="divide-y divide-[var(--border)] text-sm">
           {profiles.data?.profiles.map((profile) => (
             <li key={profile.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
-              <span className="text-slate-300">
+              <span className="text-[var(--text)]">
                 <span className="font-medium">{profile.name}</span>
-                <span className="text-slate-500">
+                <span className="text-[var(--text-muted)]">
                   {' '}
                   · {profile.provider} · {profile.model}
                 </span>
@@ -327,12 +327,12 @@ export function Profiles() {
               </span>
             </li>
           ))}
-          {profiles.data && profiles.data.profiles.length === 0 ? <li className="py-4 text-slate-500">Nenhum perfil ainda.</li> : null}
+          {profiles.data && profiles.data.profiles.length === 0 ? <li className="py-4 text-[var(--text-muted)]">Nenhum perfil ainda.</li> : null}
         </ul>
       </Card>
       <Card title={editingId ? 'Editar perfil' : 'Novo perfil'}>
         <ErrorText>{error}</ErrorText>
-        {notice ? <p className="mb-3 text-sm text-emerald-400">{notice}</p> : null}
+        {notice ? <p className="mb-3 text-sm text-[var(--tertiary-hover)]">{notice}</p> : null}
         <Field label="Nome">
           <Input name="name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
         </Field>
@@ -364,7 +364,7 @@ export function Profiles() {
           />
         </Field>
         {editingId && profiles.data?.profiles.find((item) => item.id === editingId)?.hasApiKey ? (
-          <p className="mb-3 text-xs text-slate-500">A chave atual está salva e não é exibida. Preencha apenas para substituí-la.</p>
+          <p className="mb-3 text-xs text-[var(--text-muted)]">A chave atual está salva e não é exibida. Preencha apenas para substituí-la.</p>
         ) : null}
         <div className="grid gap-x-4 sm:grid-cols-2">
           <Field label="Temperatura">
@@ -448,9 +448,9 @@ export function Profiles() {
           />
         </Field>
         <fieldset className="mb-3 text-sm">
-          <legend className="mb-2 block font-medium text-slate-300">Skills</legend>
-          {skills.isLoading ? <p className="text-slate-500">Carregando skills…</p> : null}
-          {skills.isError ? <p className="text-red-400">Falha ao carregar as skills.</p> : null}
+          <legend className="mb-2 block font-medium text-[var(--text)]">Skills</legend>
+          {skills.isLoading ? <p className="text-[var(--text-muted)]">Carregando skills…</p> : null}
+          {skills.isError ? <p className="text-[var(--link)]">Falha ao carregar as skills.</p> : null}
           <div className="flex flex-wrap gap-y-1">
             {skills.data?.skills.map((skill) => (
               <ProfileCheckbox
@@ -461,16 +461,16 @@ export function Profiles() {
               />
             ))}
           </div>
-          {skills.data && skills.data.skills.length === 0 ? <p className="text-slate-500">Nenhuma skill cadastrada.</p> : null}
+          {skills.data && skills.data.skills.length === 0 ? <p className="text-[var(--text-muted)]">Nenhuma skill cadastrada.</p> : null}
           {form.skillIds.length > 0 ? (
-            <div className="mt-3 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Ordem das skills</p>
+            <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--sunken)] p-3">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">Ordem das skills</p>
               <ol className="space-y-1">
                 {form.skillIds.map((skillId, index) => {
                   const name = skills.data?.skills.find((item) => item.id === skillId)?.name ?? skillId;
                   return (
                     <li key={skillId} className="flex items-center justify-between gap-2">
-                      <span className="text-slate-300">
+                      <span className="text-[var(--text)]">
                         {index + 1}. {name}
                       </span>
                       <span className="flex gap-1">
@@ -479,7 +479,7 @@ export function Profiles() {
                           aria-label={`Mover ${name} para cima`}
                           disabled={index === 0}
                           onClick={() => moveSkill(index, -1)}
-                          className="rounded border border-slate-700 px-2 py-0.5 text-xs text-slate-300 transition hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="rounded border border-[var(--border-strong)] px-2 py-0.5 text-xs text-[var(--text)] transition hover:border-[var(--border-strong)] disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           ↑
                         </button>
@@ -488,7 +488,7 @@ export function Profiles() {
                           aria-label={`Mover ${name} para baixo`}
                           disabled={index === form.skillIds.length - 1}
                           onClick={() => moveSkill(index, 1)}
-                          className="rounded border border-slate-700 px-2 py-0.5 text-xs text-slate-300 transition hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="rounded border border-[var(--border-strong)] px-2 py-0.5 text-xs text-[var(--text)] transition hover:border-[var(--border-strong)] disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           ↓
                         </button>
@@ -505,7 +505,7 @@ export function Profiles() {
             {save.isPending ? 'Salvando…' : editingId ? 'Salvar perfil' : 'Criar perfil'}
           </Button>
           {editingId ? (
-            <Button type="button" onClick={resetForm} disabled={save.isPending} className="bg-slate-700 text-slate-100 hover:bg-slate-600">
+            <Button type="button" onClick={resetForm} disabled={save.isPending} variant="secondary">
               Cancelar
             </Button>
           ) : null}

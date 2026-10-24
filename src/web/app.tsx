@@ -14,7 +14,7 @@ import { SettingsLayout } from './pages/settings';
 function SetupGate() {
   const status = useQuery({ queryKey: ['setup-status'], queryFn: () => api<{ needsSetup: boolean }>('/api/setup/status'), retry: false });
   if (status.isLoading || status.isFetching) {
-    return <p className="p-8 text-sm text-slate-500">Carregando…</p>;
+    return <p className="p-8 text-sm text-[var(--text-muted)]">Carregando…</p>;
   }
   if (status.data?.needsSetup) {
     return <Navigate to="/setup" replace />;

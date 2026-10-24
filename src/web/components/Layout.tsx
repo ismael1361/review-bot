@@ -24,11 +24,11 @@ export function Layout() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-900">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
+      <header className="border-b border-[var(--border)] bg-[var(--surface)]">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-6">
-            <span className="text-sm font-semibold tracking-tight text-slate-100">review-bot</span>
+            <span className="text-sm font-semibold tracking-tight text-[var(--text)]">review-bot</span>
             <nav className="flex gap-4 text-sm">
               {visibleLinks.map((link) => (
                 <NavLink
@@ -36,7 +36,7 @@ export function Layout() {
                   to={link.to}
                   end={link.to === '/'}
                   className={({ isActive }) =>
-                    isActive ? 'font-semibold text-slate-100' : 'text-slate-400 transition hover:text-slate-200'
+                    isActive ? 'font-semibold text-[var(--text)]' : 'text-[var(--text-muted)] transition hover:text-[var(--text)]'
                   }
                 >
                   {link.label}
@@ -44,7 +44,7 @@ export function Layout() {
               ))}
             </nav>
           </div>
-          <div className="flex items-center gap-3 text-sm text-slate-400">
+          <div className="flex items-center gap-3 text-sm text-[var(--text-muted)]">
             <span>
               {me.data?.username}
               {me.data ? ` · ${me.data.role}` : ''}
@@ -52,7 +52,7 @@ export function Layout() {
             <button
               type="button"
               onClick={logout}
-              className="rounded-lg border border-slate-700 px-2.5 py-1 text-slate-300 transition hover:border-slate-500 hover:text-slate-100"
+              className="rounded-lg border border-[var(--border-strong)] px-2.5 py-1 text-[var(--text)] transition hover:border-[var(--text-muted)]"
             >
               Sair
             </button>

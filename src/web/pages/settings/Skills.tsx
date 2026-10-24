@@ -10,7 +10,7 @@ type SkillForm = { name: string; description: string; contentMd: string };
 const EMPTY_FORM: SkillForm = { name: '', description: '', contentMd: '' };
 
 const textareaClass =
-  'h-32 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/40';
+  'h-32 w-full rounded-lg border border-[var(--border-strong)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40';
 
 function messageFor(error: unknown, fallback: string): string {
   return error instanceof ApiRequestError ? error.message : fallback;
@@ -107,18 +107,18 @@ export function Skills() {
   return (
     <div className="space-y-4">
       <Card title="Skills">
-        {notice ? <p className="mb-3 text-sm text-emerald-400">{notice}</p> : null}
-        {skills.isError ? <p className="mb-2 text-sm text-red-400">Falha ao carregar as skills.</p> : null}
-        {skills.isLoading ? <p className="py-4 text-sm text-slate-500">Carregando skills…</p> : null}
-        <ul className="divide-y divide-slate-800 text-sm">
+        {notice ? <p className="mb-3 text-sm text-[var(--tertiary-hover)]">{notice}</p> : null}
+        {skills.isError ? <p className="mb-2 text-sm text-[var(--link)]">Falha ao carregar as skills.</p> : null}
+        {skills.isLoading ? <p className="py-4 text-sm text-[var(--text-muted)]">Carregando skills…</p> : null}
+        <ul className="divide-y divide-[var(--border)] text-sm">
           {skills.data?.skills.map((skill) => (
             <li key={skill.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
               <div className="min-w-0 flex-1">
-                <p className="text-slate-300">
+                <p className="text-[var(--text)]">
                   <span className="font-medium">{skill.name}</span>
-                  <span className="text-slate-500"> · {skill.description || 'sem descrição'}</span>
+                  <span className="text-[var(--text-muted)]"> · {skill.description || 'sem descrição'}</span>
                 </p>
-                <p className="mt-1 whitespace-pre-wrap break-words text-xs text-slate-500">{skill.contentMd}</p>
+                <p className="mt-1 whitespace-pre-wrap break-words text-xs text-[var(--text-muted)]">{skill.contentMd}</p>
               </div>
               <span className="flex gap-2">
                 <Button type="button" onClick={() => startEdit(skill)}>
@@ -128,14 +128,14 @@ export function Skills() {
                   type="button"
                   onClick={() => confirmRemove(skill)}
                   disabled={remove.isPending}
-                  className="bg-red-950 text-red-200 hover:bg-red-900"
+                  variant="danger"
                 >
                   {remove.isPending && remove.variables === skill.id ? 'Excluindo…' : 'Excluir'}
                 </Button>
               </span>
             </li>
           ))}
-          {skills.data && skills.data.skills.length === 0 ? <li className="py-4 text-slate-500">Nenhuma skill ainda.</li> : null}
+          {skills.data && skills.data.skills.length === 0 ? <li className="py-4 text-[var(--text-muted)]">Nenhuma skill ainda.</li> : null}
         </ul>
       </Card>
       <Card title={editingId ? 'Editar skill' : 'Nova skill'}>
@@ -159,7 +159,7 @@ export function Skills() {
             {save.isPending ? 'Salvando…' : editingId ? 'Salvar skill' : 'Criar skill'}
           </Button>
           {editingId ? (
-            <Button type="button" onClick={resetForm} disabled={save.isPending} className="bg-slate-700 text-slate-100 hover:bg-slate-600">
+            <Button type="button" onClick={resetForm} disabled={save.isPending} variant="secondary">
               Cancelar
             </Button>
           ) : null}

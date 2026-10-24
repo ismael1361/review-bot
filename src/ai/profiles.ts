@@ -30,9 +30,27 @@ export const ProfileInput = z.object({
 
 export type ProfileInputType = z.infer<typeof ProfileInput>;
 
-type ProfileRow = typeof aiProfiles.$inferSelect;
+export type ProfileRow = typeof aiProfiles.$inferSelect;
 
 export type PublicProfile = Omit<ProfileRow, 'apiKeyEncrypted'> & { hasApiKey: boolean; skillIds: string[] };
+
+export function profileSnapshotJson(profile: ProfileRow): string {
+  return JSON.stringify({
+    id: profile.id,
+    name: profile.name,
+    provider: profile.provider,
+    baseUrl: profile.baseUrl,
+    model: profile.model,
+    temperature: profile.temperature,
+    maxOutputTokens: profile.maxOutputTokens,
+    maxTurns: profile.maxTurns,
+    maxTotalTokens: profile.maxTotalTokens,
+    maxDurationSec: profile.maxDurationSec,
+    maxFindings: profile.maxFindings,
+    maxGithubCalls: profile.maxGithubCalls,
+    prePrompt: profile.prePrompt,
+  });
+}
 
 export function toPublicProfile(db: Db, row: ProfileRow): PublicProfile {
   const { apiKeyEncrypted: _ignored, ...rest } = row;
