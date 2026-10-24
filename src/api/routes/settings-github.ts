@@ -4,10 +4,26 @@ import type { AppDeps } from '../app';
 import { AppError } from '../errors';
 import { requireRole } from '../../auth/guards';
 import { getGithubCredentials, saveGithubCredentials, testConnection, toPublicGithubCredentials } from '../../github/credentials';
+import { GitHubError } from '../../github/client';
 import { audit } from '../../audit/audit';
 
 const SaveBody = z.object({ pat: z.string().min(20).max(255) });
 const TestBody = z.object({ pat: z.string().min(20).max(255).optional() });
+
+function connectionError(error: unknown): AppError {
+  if (error instanceof GitHubError && (error.status === 401 || error.status === 403)) {
+    return new AppError(`Token rejeitado pelo GitHub (${error.status})`, 'invalid_github_token', 400);
+  }
+  return new AppError('GitHub indisponível', 'github_unavailable', 502);
+}
+
+async function validateGithubToken(pat: string): Promise<{ login: string; scopes: string }> {
+  try {
+    return await testConnection(pat);
+  } catch (error) {
+    throw connectionError(error);
+  }
+}
 
 export function registerGithubSettingsRoutes(app: FastifyInstance, deps: AppDeps): void {
   app.get('/api/settings/github', { preHandler: requireRole(deps, 'admin') }, async () => ({
@@ -16,7 +32,7 @@ export function registerGithubSettingsRoutes(app: FastifyInstance, deps: AppDeps
 
   app.put('/api/settings/github', { preHandler: requireRole(deps, 'admin') }, async (request) => {
     const body = SaveBody.parse(request.body);
-    const result = await testConnection(body.pat);
+    const result = await validateGithubToken(body.pat);
     saveGithubCredentials(deps.db, deps.encryptionKey, { login: result.login, pat: body.pat, scopes: result.scopes });
     audit(deps.db, { userId: request.user?.id, action: 'github.credentials.save', targetType: 'github_credentials', targetId: 'singleton', data: { login: result.login }, ip: request.ip });
     return { credentials: toPublicGithubCredentials(deps.db, deps.encryptionKey) };
@@ -28,7 +44,7 @@ export function registerGithubSettingsRoutes(app: FastifyInstance, deps: AppDeps
     if (!pat) {
       throw new AppError('Nenhum token configurado', 'github_token_missing', 400);
     }
-    const result = await testConnection(pat);
+    const result = await validateGithubToken(pat);
     return { ok: true, login: result.login, scopes: result.scopes };
   });
 }

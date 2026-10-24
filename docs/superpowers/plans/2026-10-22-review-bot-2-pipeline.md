@@ -64,7 +64,7 @@ tests/unit/..., tests/integration/...
 - Consumes: `Db`, `githubCache` table.
 - Produces: `GitHubError` (`status`, `retryable`, `bodyExcerpt`, `retryAfterMs?`); `githubFetch(path, { token, fetchImpl?, method?, body?, etag? })` retornando `{ response, notModified }`; `githubJson<T>(path, opts)` retornando `{ data: T, etag?: string }` (com 304 usando cache); `paginate<T>(path, { token, fetchImpl?, perPage?, maxPages? }): Promise<T[]>` seguindo `Link`; `classifyGitHubStatus(status, headers): { retryable: boolean; retryAfterMs?: number }`; `getCache(db, key)`, `putCache(db, key, etag, payloadJson, ttlMs)`.
 
-- [ ] **Step 1: Atualizar o schema e gerar a migration**
+- [x] **Step 1: Atualizar o schema e gerar a migration**
 
 Em `src/db/schema.ts`, adicionar a `jobs`:
 
@@ -93,7 +93,7 @@ E adicionar a `reviewFindings`:
 Run: `yarn db:generate`
 Expected: nova migration em `drizzle/0001_*.sql`.
 
-- [ ] **Step 2: Implementar `src/github/cache.ts`**
+- [x] **Step 2: Implementar `src/github/cache.ts`**
 
 ```ts
 import { eq } from 'drizzle-orm';
@@ -117,7 +117,7 @@ export function putCache(db: Db, key: string, etag: string, payloadJson: string,
 }
 ```
 
-- [ ] **Step 3: Reescrever `src/github/client.ts`**
+- [x] **Step 3: Reescrever `src/github/client.ts`**
 
 ```ts
 import type { Db } from '../db/client';
@@ -242,7 +242,7 @@ export async function testConnection(pat: string, fetchImpl?: typeof fetch): Pro
 
 Nota: `testConnection` migra para cá; atualizar `src/github/credentials.ts` para importá-lo daqui (remover a versão antiga e o `AppError` de token inválido, usando `GitHubError` com mensagem equivalente). Atualizar também `src/api/routes/settings-github.ts`: `GitHubError` com 401/403 → 400 `invalid_github_token`; 5xx/429/rede → 502 `github_unavailable`; nunca mascarar indisponibilidade como token inválido.
 
-- [ ] **Step 4: Escrever `tests/unit/github-client.test.ts`**
+- [x] **Step 4: Escrever `tests/unit/github-client.test.ts`**
 
 ```ts
 import { describe, expect, it, vi } from 'vitest';
@@ -284,12 +284,12 @@ describe('cliente GitHub', () => {
 });
 ```
 
-- [ ] **Step 5: Rodar e verificar**
+- [x] **Step 5: Rodar e verificar**
 
 Run: `yarn test tests/unit/github-client.test.ts`
 Expected: PASS.
 
-- [ ] **Step 6: Checkpoint**
+- [x] **Step 6: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes (testes do Plano 1 continuam passando).
@@ -316,7 +316,7 @@ Regras implementadas:
 - Atualiza `pr_seen` em todo caso.
 - Erros `GitHubError.retryable` → evento `poll.updated` com aviso; erros 401/403 → `recordPollAuthFailure` (contador em `app_settings` `poll_auth_failures`; ao chegar a 3 → `poller_paused = true`, evento + `dispatchEvent('poller.paused')`).
 
-- [ ] **Step 1: Implementar `src/github/poller.ts`**
+- [x] **Step 1: Implementar `src/github/poller.ts`**
 
 ```ts
 import { and, eq } from 'drizzle-orm';
@@ -458,7 +458,7 @@ export function clearPollAuthFailures(db: Db): void {
 
 Nota: o `updated_at` cacheado evita o fetch do PR quando nada mudou; o fetch do repositório usa cache ETag de 5 min. O cache de PR tem TTL curto (30 s) para não servir conteúdo desatualizado após um push.
 
-- [ ] **Step 2: Escrever `tests/integration/poller.test.ts`**
+- [x] **Step 2: Escrever `tests/integration/poller.test.ts`**
 
 ```ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -536,12 +536,12 @@ describe('poller', () => {
 });
 ```
 
-- [ ] **Step 3: Rodar e verificar**
+- [x] **Step 3: Rodar e verificar**
 
 Run: `yarn test tests/integration/poller.test.ts`
 Expected: PASS.
 
-- [ ] **Step 4: Checkpoint**
+- [x] **Step 4: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes.

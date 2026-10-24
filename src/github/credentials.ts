@@ -2,23 +2,10 @@ import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { githubCredentials } from '../db/schema';
 import { decryptSecret, encryptSecret } from '../auth/crypto';
-import { AppError } from '../api/errors';
-import { githubFetch } from './client';
+
+export { testConnection } from './client';
 
 export type GithubCredentials = { login: string; pat: string; patLast4: string; scopes: string };
-
-export async function testConnection(pat: string, fetchImpl?: typeof fetch): Promise<{ login: string; scopes: string }> {
-  const response = await githubFetch('/user', { token: pat, fetchImpl });
-  if (!response.ok) {
-    await response.text();
-    throw new AppError(`Token rejeitado pelo GitHub (${response.status})`, 'invalid_github_token', 400);
-  }
-  const data = (await response.json()) as { login?: string };
-  if (!data.login) {
-    throw new AppError('Resposta inesperada do GitHub', 'invalid_github_response', 502);
-  }
-  return { login: data.login, scopes: response.headers.get('x-oauth-scopes') ?? '' };
-}
 
 export function getGithubCredentials(db: Db, key: Buffer): GithubCredentials | undefined {
   const row = db.select().from(githubCredentials).where(eq(githubCredentials.id, 'singleton')).get();

@@ -88,6 +88,13 @@ export const repositories = sqliteTable('repositories', {
   updatedAt: integer('updated_at').notNull(),
 }, (t) => [uniqueIndex('repositories_github_id_unique').on(t.githubId), uniqueIndex('repositories_full_name_unique').on(t.fullName)]);
 
+export const prSeen = sqliteTable('pr_seen', {
+  repositoryId: text('repository_id').notNull().references(() => repositories.id, { onDelete: 'cascade' }),
+  prNumber: integer('pr_number').notNull(),
+  lastUpdatedAt: integer('last_updated_at').notNull(),
+  lastHeadSha: text('last_head_sha').notNull(),
+}, (t) => [primaryKey({ columns: [t.repositoryId, t.prNumber] })]);
+
 export const jobs = sqliteTable('jobs', {
   id: text('id').primaryKey(),
   repositoryId: text('repository_id').notNull().references(() => repositories.id),
@@ -112,6 +119,8 @@ export const jobs = sqliteTable('jobs', {
   errorCode: text('error_code'),
   errorMessage: text('error_message'),
   usageJson: text('usage_json'),
+  summaryMd: text('summary_md'),
+  nextAttemptAt: integer('next_attempt_at'),
 }, (t) => [
   uniqueIndex('jobs_unique_run').on(t.repositoryId, t.prNumber, t.headSha, t.runSeq),
   index('jobs_status_queued').on(t.status, t.queuedAt),
@@ -142,6 +151,7 @@ export const reviewFindings = sqliteTable('review_findings', {
   title: text('title').notNull(),
   bodyMd: text('body_md').notNull(),
   suggestionMd: text('suggestion_md'),
+  snippetJson: text('snippet_json'),
   status: text('status', { enum: ['valid', 'outside_diff', 'duplicate', 'posted', 'fallback', 'rejected'] }).notNull(),
   githubCommentId: text('github_comment_id'),
   createdAt: integer('created_at').notNull(),

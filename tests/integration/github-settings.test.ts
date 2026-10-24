@@ -37,6 +37,28 @@ describe('credencial GitHub', () => {
     await app.close();
   });
 
+  it('trata indisponibilidade do GitHub como 502', async () => {
+    vi.stubGlobal('fetch', fakeGithub('', 500));
+    const { app, deps } = await createTestApp();
+    const cookie = await setupRootAndLogin(app, deps);
+    const save = await app.inject({ method: 'PUT', url: '/api/settings/github', headers: { cookie }, payload: { pat: 'ghp_1234567890abcdefghij' } });
+    expect(save.statusCode).toBe(502);
+    expect(save.json().error.code).toBe('github_unavailable');
+    await app.close();
+  });
+
+  it('trata falha de rede como 502', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      throw new TypeError('fetch failed');
+    }) as unknown as typeof fetch);
+    const { app, deps } = await createTestApp();
+    const cookie = await setupRootAndLogin(app, deps);
+    const save = await app.inject({ method: 'PUT', url: '/api/settings/github', headers: { cookie }, payload: { pat: 'ghp_1234567890abcdefghij' } });
+    expect(save.statusCode).toBe(502);
+    expect(save.json().error.code).toBe('github_unavailable');
+    await app.close();
+  });
+
   it('testa usando o token salvo quando não enviado', async () => {
     vi.stubGlobal('fetch', fakeGithub('octocat'));
     const { app, deps } = await createTestApp();
