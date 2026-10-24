@@ -1720,7 +1720,7 @@ Expected: todos verdes.
 - Consumes: `ChatInput`, `ChatResult`, `ToolSpec`, `ProviderAdapter`, `toolSpecs`, `executeTool`, `ToolContext`, `agentMessages`, `events`.
 - Produces: `buildSystemPrompt(snapshot, skills)`, `buildUserPrompt(input)`; `runAgentLoop(deps: LoopDeps): Promise<LoopResult>` com `LoopDeps = { db, bus, job, profileSnapshot, baseUrl, apiKey, skills, tools: ToolContext, chatImpl?, now? }` e `LoopResult = { status: 'succeeded' | 'partial'; summary: string; turns: number; usage: { input: number; output: number }; githubCalls: number }`.
 
-- [ ] **Step 1: Implementar `src/ai/prompt.ts`**
+- [x] **Step 1: Implementar `src/ai/prompt.ts`**
 
 ```ts
 export type ProfileSnapshot = {
@@ -1772,7 +1772,7 @@ export function buildUserPrompt(input: { repo: string; prNumber: number; title: 
 }
 ```
 
-- [ ] **Step 2: Implementar `src/ai/loop.ts`**
+- [x] **Step 2: Implementar `src/ai/loop.ts`**
 
 ```ts
 import { eq } from 'drizzle-orm';
@@ -1891,7 +1891,7 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopResult> {
 
 Nota: `baseUrl` e `temperature` vêm do snapshot do perfil; `LoopDeps.baseUrl` é obrigatório.
 
-- [ ] **Step 3: Escrever os testes**
+- [x] **Step 3: Escrever os testes**
 
 `tests/unit/prompt.test.ts`:
 
@@ -2001,12 +2001,12 @@ describe('loop agêntico', () => {
 });
 ```
 
-- [ ] **Step 4: Rodar e verificar**
+- [x] **Step 4: Rodar e verificar**
 
 Run: `yarn test tests/unit/prompt.test.ts tests/integration/loop.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Checkpoint**
+- [x] **Step 5: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes.
@@ -2021,7 +2021,7 @@ Expected: todos verdes.
 - Consumes: `Db`, `jobs`, `reviews`, `reviewFindings`, `repositories`, `listFindings`, `GitHubError`, `githubFetch`, `githubJson`.
 - Produces: `publishReview(deps: PublishDeps, job, summary): Promise<PublishResult>` com `PublishDeps = { db, token, fetchImpl?, now? }` e `PublishResult = { status: 'posted' | 'fallback' | 'failed'; reviewId?: string; url?: string; commentsPosted: number; commentsFallback: number; retryable?: boolean; error?: string }`; `buildReviewBody(marker, summary, fallbackFindings)`.
 
-- [ ] **Step 1: Implementar `src/github/publisher.ts`**
+- [x] **Step 1: Implementar `src/github/publisher.ts`**
 
 ```ts
 import { eq } from 'drizzle-orm';
@@ -2136,7 +2136,7 @@ export async function publishReview(deps: PublishDeps, job: typeof reviews.$infe
 
 Nota: tipar `job` como `{ id: string; repositoryId: string; prNumber: number; headSha: string; summaryMd: string | null }` (estrutural), evitando o condicional estranho acima.
 
-- [ ] **Step 2: Escrever `tests/unit/publisher.test.ts`**
+- [x] **Step 2: Escrever `tests/unit/publisher.test.ts`**
 
 ```ts
 import { describe, expect, it, vi } from 'vitest';
@@ -2219,12 +2219,12 @@ describe('publisher', () => {
 });
 ```
 
-- [ ] **Step 3: Rodar e verificar**
+- [x] **Step 3: Rodar e verificar**
 
 Run: `yarn test tests/unit/publisher.test.ts`
 Expected: PASS.
 
-- [ ] **Step 4: Checkpoint**
+- [x] **Step 4: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes.
@@ -2242,7 +2242,7 @@ Expected: todos verdes.
 - Consumes: tudo das tasks anteriores + `getGithubCredentials`, `getProfileRow`, `decryptSecret`, `paginate`, `parseFilePatch`, `validRightLines`, `runAgentLoop`, `publishReview`, `createWorker`, `recoverOrphans`, `dispatchEvent`, `getSystemSettings`, `recordPollAuthFailure`.
 - Produces: `executeJob(job, deps: WorkerDeps): Promise<{ status: 'succeeded' | 'partial'; usageJson: string }>`; `startRuntime(deps)` em `src/server.ts` (poller + workers + recover + retenção virá no Plano 3).
 
-- [ ] **Step 1: Implementar `src/jobs/execute.ts`**
+- [x] **Step 1: Implementar `src/jobs/execute.ts`**
 
 ```ts
 import { eq } from 'drizzle-orm';
@@ -2364,7 +2364,7 @@ function loadSkills(deps: WorkerDeps, profileId: string): { name: string; conten
 
 Nota: adicionar imports `aiProfileSkills`, `skills` de `../db/schema`.
 
-- [ ] **Step 2: Atualizar `src/server.ts` para iniciar poller e workers**
+- [x] **Step 2: Atualizar `src/server.ts` para iniciar poller e workers**
 
 ```ts
   const app = await buildApp({ db, config, logger, encryptionKey, bus });
@@ -2405,7 +2405,7 @@ Nota: adicionar imports `aiProfileSkills`, `skills` de `../db/schema`.
   };
 ```
 
-- [ ] **Step 3: Escrever `tests/integration/execute.test.ts`**
+- [x] **Step 3: Escrever `tests/integration/execute.test.ts`**
 
 ```ts
 import { describe, expect, it, vi } from 'vitest';
@@ -2477,12 +2477,12 @@ describe('executeJob', () => {
 
 Nota: `WorkerDeps.chatImpl` é repassado por `executeJob` ao loop; o teste injeta o roteiro por esse campo.
 
-- [ ] **Step 4: Rodar e verificar**
+- [x] **Step 4: Rodar e verificar**
 
 Run: `yarn test tests/integration/execute.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Checkpoint**
+- [x] **Step 5: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes.
@@ -2500,7 +2500,7 @@ Expected: todos verdes.
 - Consumes: `cancelJob`, `retryJob`, `enqueueManual`, `publishReview`, `listFindings`, `agentMessages`, `events`, `reviews`.
 - Produces: `GET /api/jobs/:id` (job + findings + events + transcript + review); `POST /api/jobs/:id/cancel`; `POST /api/jobs/:id/retry`; `POST /api/jobs/:id/publish-review`; `POST /api/jobs` (enfileiramento manual); `GET /api/reviews/:id` (review + job + findings + transcript).
 
-- [ ] **Step 1: Implementar `src/api/routes/jobs.ts`**
+- [x] **Step 1: Implementar `src/api/routes/jobs.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
@@ -2588,7 +2588,7 @@ export function registerJobRoutes(app: FastifyInstance, deps: AppDeps): void {
 }
 ```
 
-- [ ] **Step 2: Implementar `src/api/routes/reviews.ts`**
+- [x] **Step 2: Implementar `src/api/routes/reviews.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
@@ -2620,7 +2620,7 @@ export function registerReviewDetailRoutes(app: FastifyInstance, deps: AppDeps):
 
 Registrar as duas rotas em `src/api/app.ts`.
 
-- [ ] **Step 3: Escrever `tests/integration/jobs-routes.test.ts`**
+- [x] **Step 3: Escrever `tests/integration/jobs-routes.test.ts`**
 
 ```ts
 import { describe, expect, it, vi } from 'vitest';
@@ -2686,12 +2686,12 @@ describe('rotas de jobs', () => {
 });
 ```
 
-- [ ] **Step 4: Rodar e verificar**
+- [x] **Step 4: Rodar e verificar**
 
 Run: `yarn test tests/integration/jobs-routes.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Checkpoint**
+- [x] **Step 5: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes.

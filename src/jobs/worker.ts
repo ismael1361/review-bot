@@ -5,6 +5,7 @@ import type { Db } from '../db/client';
 import { events } from '../db/schema';
 import type { EventBus } from '../events/bus';
 import { GitHubError } from '../github/client';
+import type { LookupFn } from '../shared/url-guard';
 import { RETRY_DELAYS_MS, RetryableJobError, claimNextJob, isJobCancelled, markJobFinished, scheduleRetry, type JobRow } from './queue';
 
 export type WorkerDeps = {
@@ -16,6 +17,8 @@ export type WorkerDeps = {
   chatImpl?: (input: ChatInput) => Promise<ChatResult>;
   handler: (job: JobRow, deps: WorkerDeps) => Promise<{ status: 'succeeded' | 'partial'; usageJson?: string }>;
   now?: () => number;
+  allowPrivate?: boolean;
+  lookup?: LookupFn;
 };
 
 function emit(deps: WorkerDeps, jobId: string, type: string, message: string, data?: unknown): void {

@@ -18,6 +18,8 @@ import { registerSkillRoutes } from './routes/skills';
 import { registerWebhookRoutes } from './routes/webhooks';
 import { registerRepositoryRoutes } from './routes/repositories';
 import { registerJobReadRoutes } from './routes/jobs-read';
+import { registerJobRoutes } from './routes/jobs';
+import { registerReviewDetailRoutes } from './routes/reviews';
 import { registerQueueRoutes } from './routes/queue';
 import { registerSystemSettingsRoutes } from './routes/settings-system';
 import { registerDashboardRoutes } from './routes/dashboard';
@@ -31,6 +33,7 @@ export type AppDeps = {
   logger: Logger;
   encryptionKey: Buffer;
   bus: EventBus;
+  fetchImpl?: typeof fetch;
 };
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
@@ -66,6 +69,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   registerWebhookRoutes(app, deps);
   registerRepositoryRoutes(app, deps);
   registerJobReadRoutes(app, deps);
+  registerJobRoutes(app, deps);
+  registerReviewDetailRoutes(app, deps);
   registerQueueRoutes(app, deps);
   registerSystemSettingsRoutes(app, deps);
   registerDashboardRoutes(app, deps);
