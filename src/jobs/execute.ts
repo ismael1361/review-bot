@@ -291,7 +291,11 @@ export async function executeJob(job: JobRow, deps: WorkerDeps): Promise<Executi
     if (pull.head.sha !== job.headSha) {
       throw new Error(`PR desatualizada: head ${pull.head.sha} difere do SHA do job ${job.headSha}`);
     }
-    const headRepoFullName = pull.head.repo?.full_name ?? repo.fullName;
+    const headRepoFullName = job.headRepo ?? pull.head.repo?.full_name ?? repo.fullName;
+    const headParts = headRepoFullName.split('/');
+    if (headParts.length !== 2 || !headParts[0] || !headParts[1]) {
+      throw new Error('Repositório head inválido');
+    }
 
     const rawFiles = await paginate<PrFile>(`/repos/${baseRepo.owner}/${baseRepo.name}/pulls/${job.prNumber}/files`, {
       token,
@@ -368,6 +372,7 @@ export async function executeJob(job: JobRow, deps: WorkerDeps): Promise<Executi
       userPrompt,
       chatImpl: deps.chatImpl,
       fetchImpl,
+      shouldCancel: () => isJobCancelled(deps.db, job.id),
       tools: {
         db: deps.db,
         job,

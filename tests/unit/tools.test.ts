@@ -186,7 +186,7 @@ describe('tools', () => {
     expect(result.content.split('\n').filter((line) => line.startsWith('file '))).toHaveLength(200);
   });
 
-  it('search_code usa o repositório head', async () => {
+  it('search_code usa o repositório base', async () => {
     let requested = '';
     const fetchImpl = vi.fn(async (url: string) => {
       requested = String(url);
@@ -199,8 +199,8 @@ describe('tools', () => {
     });
     const result = await executeTool('search_code', JSON.stringify({ query: 'resolveSession' }), ctx);
     expect(result.content).toBe('src/x.ts');
-    expect(requested).toContain('repo%3Afork%2Fhead');
-    expect(requested).not.toContain('repo%3Aupstream%2Fbase');
+    expect(requested).toContain('repo%3Aupstream%2Fbase');
+    expect(requested).not.toContain('repo%3Afork%2Fhead');
     expect(ctx.searchCalls.count).toBe(1);
     expect(ctx.calls.count).toBe(1);
   });

@@ -17,6 +17,8 @@ import {
   type JobRow,
 } from './queue';
 
+export class CancelledError extends Error {}
+
 export type WorkerDeps = {
   db: Db;
   bus: EventBus;
@@ -63,6 +65,11 @@ export function createWorker(deps: WorkerDeps, workerId: string): { tick: () => 
       markJobFinished(deps.db, job.id, { status: result.status, usageJson: result.usageJson, now: clock(), workerId });
       emit(deps, job.id, 'job.finished', result.status === 'partial' ? 'Review parcial publicada' : 'Review publicada', { status: result.status });
     } catch (error) {
+      if (error instanceof CancelledError) {
+        markJobFinished(deps.db, job.id, { status: 'cancelled', now: clock(), workerId });
+        emit(deps, job.id, 'job.finished', 'Job cancelado', { status: 'cancelled' });
+        return true;
+      }
       if (error instanceof StaleClaimError || isJobCancelled(deps.db, job.id)) {
         return true;
       }

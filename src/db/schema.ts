@@ -93,6 +93,7 @@ export const prSeen = sqliteTable('pr_seen', {
   prNumber: integer('pr_number').notNull(),
   lastUpdatedAt: integer('last_updated_at').notNull(),
   lastHeadSha: text('last_head_sha').notNull(),
+  headRepo: text('head_repo'),
 }, (t) => [primaryKey({ columns: [t.repositoryId, t.prNumber] })]);
 
 export const jobs = sqliteTable('jobs', {
@@ -104,6 +105,7 @@ export const jobs = sqliteTable('jobs', {
   authorLogin: text('author_login').notNull(),
   headSha: text('head_sha').notNull(),
   baseSha: text('base_sha').notNull(),
+  headRepo: text('head_repo'),
   runSeq: integer('run_seq').notNull().default(1),
   status: text('status', { enum: ['queued', 'running', 'succeeded', 'partial', 'failed', 'cancelled'] }).notNull(),
   priority: integer('priority').notNull().default(0),

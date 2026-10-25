@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
 import { v7 as uuidv7 } from 'uuid';
 import type { ChatInput, ChatResult } from '../../src/ai/adapters/types';
@@ -173,6 +173,9 @@ function githubFetch(record: GithubRecord, options: FakeOptions = {}) {
     if (url.includes('/pulls/7/reviews')) {
       return jsonResponse(reviewList);
     }
+    if (url.includes('/search/code')) {
+      return jsonResponse({ items: [{ path: 'src/a.ts' }] });
+    }
     if (url.includes('/contents/')) {
       return jsonResponse({ content: Buffer.from('const a = 1;').toString('base64'), encoding: 'base64' });
     }
@@ -299,6 +302,48 @@ describe('executeJob', () => {
     expect(record.urls.some((url) => url.includes('/repos/fork/b/contents/src/a.ts'))).toBe(true);
     expect(record.urls.some((url) => url.includes('/repos/a/b/contents/'))).toBe(false);
     expect(record.urls.some((url) => url.includes('/repos/a/b/pulls/7/reviews'))).toBe(true);
+  });
+
+  it('prioriza o repositório head persistido no job', async () => {
+    const { deps, job } = await setup();
+    deps.db.update(jobs).set({ headRepo: 'fork/api' }).where(eq(jobs.id, job.id)).run();
+    const updated = deps.db.select().from(jobs).where(eq(jobs.id, job.id)).get()!;
+    const record: GithubRecord = { posts: [], urls: [] };
+    const fetchMock = githubFetch(record, { headRepo: 'other/repo' });
+    const script = scripted([
+      toolCall('read_file', { path: 'src/a.ts' }),
+      toolCall('search_code', { query: 'resolveSession' }),
+      toolCall('submit_review', { summary: 'Resumo técnico com leitura do fork persistido.' }),
+    ]);
+
+    const result = await executeJob(
+      updated,
+      workerDeps(deps, fetchMock as unknown as typeof fetch, script.chatImpl),
+    );
+
+    expect(result.status).toBe('succeeded');
+    expect(record.urls.some((url) => url.includes('/repos/fork/api/contents/src/a.ts'))).toBe(true);
+    expect(record.urls.some((url) => url.includes('/repos/other/repo/contents/'))).toBe(false);
+    expect(record.urls.some((url) => url.includes('repo%3Aa%2Fb'))).toBe(true);
+    expect(record.urls.some((url) => url.includes('repo%3Afork%2Fapi'))).toBe(false);
+    expect(record.urls.some((url) => url.includes('/repos/a/b/pulls/7/reviews'))).toBe(true);
+  });
+
+  it('rejeita repositório head inválido antes de chamar o chat', async () => {
+    const { deps, job } = await setup();
+    deps.db.update(jobs).set({ headRepo: 'fork' }).where(eq(jobs.id, job.id)).run();
+    const updated = deps.db.select().from(jobs).where(eq(jobs.id, job.id)).get()!;
+    const record: GithubRecord = { posts: [], urls: [] };
+    const fetchMock = githubFetch(record);
+    const chat = vi.fn(async () => {
+      throw new Error('não deveria chamar o chat');
+    });
+
+    await expect(
+      executeJob(updated, workerDeps(deps, fetchMock as unknown as typeof fetch, chat)),
+    ).rejects.toThrow('Repositório head inválido');
+    expect(chat).not.toHaveBeenCalled();
+    expect(record.urls).toHaveLength(1);
   });
 
   it('rejeita snapshot de perfil inválido antes de qualquer chamada externa', async () => {
@@ -442,6 +487,44 @@ describe('executeJob', () => {
       .map((event) => event.type);
     expect(eventTypes).not.toContain('job.finished');
     expect(eventTypes).not.toContain('job.failed');
+  });
+
+  it('cancelamento cooperativo interrompe o loop sem marcar o job como falho', async () => {
+    const { deps, job } = await setup();
+    deps.db
+      .update(jobs)
+      .set({ status: 'queued', attempts: 0, lockedBy: null, nextAttemptAt: Date.now() })
+      .where(eq(jobs.id, job.id))
+      .run();
+    const record: GithubRecord = { posts: [], urls: [] };
+    const fetchMock = githubFetch(record);
+    let chatCalls = 0;
+    const chatImpl = async (): Promise<ChatResult> => {
+      chatCalls += 1;
+      cancelJob(deps.db, job.id);
+      return { toolCalls: [], usage: { input: 1, output: 1 }, finishReason: 'stop' };
+    };
+
+    const worker = createWorker(workerDeps(deps, fetchMock as unknown as typeof fetch, chatImpl), 'w1');
+    expect(await worker.tick()).toBe(true);
+
+    expect(chatCalls).toBe(1);
+    expect(record.posts).toHaveLength(0);
+    const current = deps.db.select().from(jobs).where(eq(jobs.id, job.id)).get()!;
+    expect(current.status).toBe('cancelled');
+    expect(current.errorCode).toBeNull();
+    const eventTypes = deps.db
+      .select()
+      .from(events)
+      .where(eq(events.jobId, job.id))
+      .all()
+      .map((event) => event.type);
+    expect(eventTypes).toContain('job.started');
+    expect(eventTypes).toContain('job.finished');
+    expect(eventTypes).not.toContain('job.failed');
+    const finished = deps.db.select().from(events).where(and(eq(events.jobId, job.id), eq(events.type, 'job.finished'))).get()!;
+    expect(finished.message).toBe('Job cancelado');
+    expect(JSON.parse(finished.dataJson!)).toMatchObject({ status: 'cancelled' });
   });
 
   it('trunca patches por bytes, prioriza código e registra evento de progresso', async () => {

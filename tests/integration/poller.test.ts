@@ -109,6 +109,10 @@ describe('poller', () => {
     expect(job.profileId).toBe(profileId);
     expect(job.profileSnapshotJson).not.toBeNull();
     expect(JSON.parse(job.profileSnapshotJson!)).toMatchObject({ id: profileId, name: 'p1', provider: 'openai_compatible', model: 'm' });
+    expect(job.headRepo).toBe('acme/api');
+    const repo = deps.db.select().from(repositories).where(eq(repositories.fullName, 'acme/api')).get()!;
+    const seen = deps.db.select().from(prSeen).where(and(eq(prSeen.repositoryId, repo.id), eq(prSeen.prNumber, 482))).get()!;
+    expect(seen.headRepo).toBe('acme/api');
     expect(busEvents.some((event) => event.type === 'job.created')).toBe(true);
 
     const callsAfterFirst = calls.length;
@@ -117,6 +121,28 @@ describe('poller', () => {
     expect(calls).toHaveLength(callsAfterFirst + 1);
     expect(calls[calls.length - 1]).toContain('/search/issues');
     unsubscribe();
+  });
+
+  it('persiste e atualiza o repositório head do fork', async () => {
+    const { deps } = await depsWithSetup();
+    const forkPull = { ...pullInfo, head: { sha: '9f2c1ab', repo: { full_name: 'fork/api' } } };
+    const firstFetch = fakeFetch(githubRoutes({ pull: forkPull }));
+
+    const first = await pollOnce(pollerDeps(deps, firstFetch.fetchImpl));
+    expect(first).toEqual({ found: 1, enqueued: 1, skipped: 0 });
+    const job = deps.db.select().from(jobs).get()!;
+    expect(job.headRepo).toBe('fork/api');
+    const repo = deps.db.select().from(repositories).where(eq(repositories.fullName, 'acme/api')).get()!;
+    const seen = deps.db.select().from(prSeen).where(and(eq(prSeen.repositoryId, repo.id), eq(prSeen.prNumber, 482))).get()!;
+    expect(seen.headRepo).toBe('fork/api');
+
+    const nextPull = { ...pullInfo, head: { sha: '9f2c1ab', repo: { full_name: 'fork2/api' } } };
+    const secondFetch = fakeFetch(githubRoutes({ search: { items: [{ ...searchItem, updated_at: '2026-10-22T15:00:00Z' }] }, pull: nextPull }));
+    const second = await pollOnce(pollerDeps(deps, secondFetch.fetchImpl));
+    expect(second).toEqual({ found: 1, enqueued: 0, skipped: 1 });
+    const updatedSeen = deps.db.select().from(prSeen).where(and(eq(prSeen.repositoryId, repo.id), eq(prSeen.prNumber, 482))).get()!;
+    expect(updatedSeen.headRepo).toBe('fork2/api');
+    expect(deps.db.select().from(jobs).all()).toHaveLength(1);
   });
 
   it('ignora repositório arquivado e persiste pr_seen', async () => {

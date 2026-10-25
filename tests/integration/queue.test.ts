@@ -22,7 +22,7 @@ import {
   retryJob,
   scheduleRetry,
 } from '../../src/jobs/queue';
-import { createWorker } from '../../src/jobs/worker';
+import { CancelledError, createWorker } from '../../src/jobs/worker';
 import { createTestApp } from '../helpers/app';
 
 const TOKEN = 'ghp_1234567890abcdefghij';
@@ -33,7 +33,7 @@ const pullInfo = {
   title: 'fix: valida token',
   html_url: 'https://github.com/acme/api/pull/482',
   draft: false,
-  head: { sha: '9f2c1ab' },
+  head: { sha: '9f2c1ab', repo: { full_name: 'fork/api' } },
   base: { sha: 'aaaaaaa' },
   user: { login: 'octocat' },
 };
@@ -377,6 +377,36 @@ describe('worker', () => {
     expect(job.nextAttemptAt).toBe(now + 2);
   });
 
+  it('CancelledError marca o job como cancelado sem falha', async () => {
+    const d = await makeDeps();
+    const now = Date.now();
+    const id = insertJob(d.db, { queuedAt: now, nextAttemptAt: now });
+    const worker = createWorker(
+      {
+        ...d,
+        handler: async () => {
+          throw new CancelledError('job_cancelled');
+        },
+        now: () => now,
+      },
+      'w1',
+    );
+
+    expect(await worker.tick()).toBe(true);
+    const job = getJob(d.db, id);
+    expect(job.status).toBe('cancelled');
+    expect(job.errorCode).toBeNull();
+    expect(job.errorMessage).toBeNull();
+    expect(jobEventTypes(d.db, id)).toEqual(['job.started', 'job.finished']);
+    const finished = d.db
+      .select()
+      .from(events)
+      .where(and(eq(events.jobId, id), eq(events.type, 'job.finished')))
+      .get()!;
+    expect(finished.message).toBe('Job cancelado');
+    expect(JSON.parse(finished.dataJson!)).toMatchObject({ status: 'cancelled' });
+  });
+
   it('cancelamento durante o handler não agenda retry', async () => {
     const d = await makeDeps();
     const now = Date.now();
@@ -418,6 +448,7 @@ describe('enqueueManual', () => {
     expect(first.status).toBe('queued');
     expect(first.runSeq).toBe(1);
     expect(first.profileId).toBe(profileId);
+    expect(first.headRepo).toBe('fork/api');
     const snapshot = JSON.parse(first.profileSnapshotJson!);
     expect(snapshot).toMatchObject({ id: profileId, name: 'p1', provider: 'openai_compatible', model: 'm' });
     expect(snapshot).not.toHaveProperty('apiKey');
@@ -429,6 +460,7 @@ describe('enqueueManual', () => {
       .where(and(eq(prSeen.repositoryId, repo.id), eq(prSeen.prNumber, 482)))
       .get();
     expect(seen?.lastHeadSha).toBe(pullInfo.head.sha);
+    expect(seen?.headRepo).toBe('fork/api');
 
     await expect(
       enqueueManual(manualDeps(d, fetchImpl), { repoFullName: 'acme/api', prNumber: 482 }),
@@ -437,6 +469,7 @@ describe('enqueueManual', () => {
     const secondId = await enqueueManual(manualDeps(d, fetchImpl), { repoFullName: 'acme/api', prNumber: 482, force: true });
     expect(secondId).not.toBe(firstId);
     expect(getJob(d.db, secondId).runSeq).toBe(2);
+    expect(getJob(d.db, secondId).headRepo).toBe('fork/api');
     expect(d.db.select().from(jobs).all()).toHaveLength(2);
     expect(calls.filter((url) => url.includes('/pulls/482'))).toHaveLength(3);
   });

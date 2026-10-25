@@ -300,7 +300,7 @@ export async function executeTool(name: string, argsJson: string, ctx: ToolConte
     ctx.searchCalls.count += 1;
     const data = await githubRequest<{ items: { path: string }[] }>(
       ctx,
-      `/search/code?q=${encodeURIComponent(`${args.query} repo:${ctx.headRepoFullName}`)}`,
+      `/search/code?q=${encodeURIComponent(`${args.query} repo:${ctx.baseRepo.owner}/${ctx.baseRepo.name}`)}`,
     );
     return { content: data.items.slice(0, MAX_SEARCH_RESULTS).map((item) => item.path).join('\n') || 'Sem resultados' };
   }

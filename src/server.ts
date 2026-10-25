@@ -16,6 +16,7 @@ import { pollOnce, recordPollAuthFailure } from "./github/poller";
 import { createWorker } from "./jobs/worker";
 import { executeJob } from "./jobs/execute";
 import { recoverOrphans } from "./jobs/queue";
+import { runRetention } from "./ops/retention";
 import "dotenv/config";
 
 export type RuntimeDeps = AppDeps & { fetchImpl?: typeof fetch };
@@ -96,12 +97,23 @@ export function startRuntime(deps: RuntimeDeps): { stop: () => void } {
   };
   scheduleNextPoll();
 
+  const retentionTimer = setInterval(() => {
+    try {
+      const removed = runRetention(deps.db);
+      deps.logger.info({ removed }, "retenção executada");
+    } catch (error) {
+      deps.logger.warn({ err: error }, "falha na retenção");
+    }
+  }, 24 * 60 * 60 * 1000);
+  retentionTimer.unref?.();
+
   return {
     stop() {
       stopped = true;
       if (pollTimer) {
         clearTimeout(pollTimer);
       }
+      clearInterval(retentionTimer);
       for (const worker of workers) {
         worker.stop();
       }

@@ -141,9 +141,14 @@ export async function pollOnce(deps: PollerDeps): Promise<PollResult> {
         cache: { db: deps.db, key: `pull:${fullName}:${item.number}`, ttlMs: 30_000 },
       })).data;
 
+      const headRepo = pull.head.repo?.full_name ?? repo.fullName;
+
       deps.db.insert(prSeen)
-        .values({ repositoryId: repo.id, prNumber: item.number, lastUpdatedAt: updatedAt, lastHeadSha: pull.head.sha })
-        .onConflictDoUpdate({ target: [prSeen.repositoryId, prSeen.prNumber], set: { lastUpdatedAt: updatedAt, lastHeadSha: pull.head.sha } })
+        .values({ repositoryId: repo.id, prNumber: item.number, lastUpdatedAt: updatedAt, lastHeadSha: pull.head.sha, headRepo })
+        .onConflictDoUpdate({
+          target: [prSeen.repositoryId, prSeen.prNumber],
+          set: { lastUpdatedAt: updatedAt, lastHeadSha: pull.head.sha, headRepo },
+        })
         .run();
 
       const skipReasons: string[] = [];
@@ -182,6 +187,7 @@ export async function pollOnce(deps: PollerDeps): Promise<PollResult> {
           authorLogin: pull.user.login,
           headSha: pull.head.sha,
           baseSha: pull.base.sha,
+          headRepo,
           runSeq: 1,
           status: 'queued',
           priority: 0,

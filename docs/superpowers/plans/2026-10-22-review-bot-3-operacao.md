@@ -36,13 +36,13 @@
 - Consumes: tudo dos Planos 1-2.
 - Produces: `jobs.headRepo`; `WorkerDeps.allowPrivate: boolean`; `LoopDeps.shouldCancel?: () => boolean`; `CancelledError` em `src/jobs/worker.ts`; `testProfile(db, key, id, options: { overrideApiKey?: string; allowPrivate: boolean })`; `dispatchEvent` chamado com `allowPrivate` da config.
 
-- [ ] **Step 1: Schema e migration**
+- [x] **Step 1: Schema e migration**
 
 Adicionar `headRepo: text('head_repo')` a `jobs` e `pr_seen`; rodar `yarn db:generate`.
 
 No poller, gravar `head_repo` a partir de `pull.head.repo?.full_name ?? repo.full_name`; em `enqueueManual`, usar o mesmo campo (buscar `head.repo`).
 
-- [ ] **Step 2: Usar o repositório head nas ferramentas e o base na publicação**
+- [x] **Step 2: Usar o repositório head nas ferramentas e o base na publicação**
 
 Em `executeJob`:
 
@@ -67,14 +67,14 @@ Em `executeJob`:
 
 As ferramentas de leitura (`read_file`, `list_directory`, `list_tree`) passam a usar `ctx.headRepoFullName`; `search_code` continua no repo base. A publicação continua no repo base (`publishReview` usa `repo.owner/repo.name`).
 
-- [ ] **Step 3: `ALLOW_PRIVATE_URLS` real**
+- [x] **Step 3: `ALLOW_PRIVATE_URLS` real**
 
 - Em `WorkerDeps`, adicionar `allowPrivate: boolean`.
 - Em `executeJob`, trocar as chamadas de `dispatchEvent(... allowPrivate: false ...)` por `allowPrivate: deps.allowPrivate`.
 - Em `src/server.ts`, ao criar o worker, passar `allowPrivate: config.ALLOW_PRIVATE_URLS`.
 - Em `testProfile`, trocar `assertSafeUrl(row.baseUrl, { allowPrivate: true })` por opções explícitas; a rota `/api/ai-profiles/:id/test` passa `allowPrivate: deps.config.ALLOW_PRIVATE_URLS`. O formulário de perfil continua aceitando URLs privadas apenas quando a flag está ligada.
 
-- [ ] **Step 4: Cancelamento cooperativo**
+- [x] **Step 4: Cancelamento cooperativo**
 
 Em `src/jobs/worker.ts`:
 
@@ -105,7 +105,7 @@ Nota: alterar também `markJobFinished` em `src/jobs/queue.ts` para aceitar `'ca
 export function markJobFinished(db: Db, jobId: string, patch: { status: 'succeeded' | 'partial' | 'failed' | 'cancelled'; errorCode?: string; errorMessage?: string; usageJson?: string; now?: number }): void {
 ```
 
-- [ ] **Step 5: Escrever `tests/integration/fork-and-cancel.test.ts`**
+- [x] **Step 5: Escrever `tests/integration/fork-and-cancel.test.ts`**
 
 ```ts
 import { describe, expect, it, vi } from 'vitest';
@@ -164,12 +164,12 @@ describe('fork e cancelamento', () => {
 });
 ```
 
-- [ ] **Step 6: Rodar e verificar**
+- [x] **Step 6: Rodar e verificar**
 
 Run: `yarn test tests/integration/fork-and-cancel.test.ts`
 Expected: PASS.
 
-- [ ] **Step 7: Checkpoint**
+- [x] **Step 7: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes.
@@ -187,7 +187,7 @@ Expected: todos verdes.
 - Consumes: `Db`, `getSystemSettings`, `agent_messages`, `events`, `webhook_deliveries`, `github_cache`, `audit_log`.
 - Produces: `runRetention(db, now?): { messages: number; events: number; deliveries: number; cache: number; audit: number }`.
 
-- [ ] **Step 1: Implementar `src/ops/retention.ts`**
+- [x] **Step 1: Implementar `src/ops/retention.ts`**
 
 ```ts
 import { lt } from 'drizzle-orm';
@@ -208,7 +208,7 @@ export function runRetention(db: Db, now = Date.now()): { messages: number; even
 }
 ```
 
-- [ ] **Step 2: Agendar no `src/server.ts`**
+- [x] **Step 2: Agendar no `src/server.ts`**
 
 ```ts
   const retentionTimer = setInterval(() => {
@@ -223,7 +223,7 @@ export function runRetention(db: Db, now = Date.now()): { messages: number; even
 
 E limpar o timer no shutdown.
 
-- [ ] **Step 3: Escrever `tests/unit/retention.test.ts`**
+- [x] **Step 3: Escrever `tests/unit/retention.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -254,12 +254,12 @@ describe('retenção', () => {
 });
 ```
 
-- [ ] **Step 4: Rodar e verificar**
+- [x] **Step 4: Rodar e verificar**
 
 Run: `yarn test tests/unit/retention.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Checkpoint**
+- [x] **Step 5: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes.

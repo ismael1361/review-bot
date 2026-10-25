@@ -138,7 +138,14 @@ export async function enqueueManual(
     })
   ).data;
   const pull = (
-    await githubJson<{ title: string; html_url: string; draft: boolean; head: { sha: string }; base: { sha: string }; user: { login: string } }>(
+    await githubJson<{
+      title: string;
+      html_url: string;
+      draft: boolean;
+      head: { sha: string; repo?: { full_name: string } | null };
+      base: { sha: string };
+      user: { login: string };
+    }>(
       `/repos/${owner}/${name}/pulls/${input.prNumber}`,
       { token: credentials.pat, fetchImpl: deps.fetchImpl },
     )
@@ -167,6 +174,7 @@ export async function enqueueManual(
   if (!repo) {
     throw new Error(`Repositório não persistido: ${repoInfo.full_name}`);
   }
+  const headRepo = pull.head.repo?.full_name ?? repo.fullName;
   const existing = deps.db
     .select()
     .from(jobs)
@@ -188,6 +196,7 @@ export async function enqueueManual(
       authorLogin: pull.user.login,
       headSha: pull.head.sha,
       baseSha: pull.base.sha,
+      headRepo,
       runSeq,
       status: 'queued',
       priority: 0,
@@ -201,10 +210,10 @@ export async function enqueueManual(
     .run();
   deps.db
     .insert(prSeen)
-    .values({ repositoryId: repo.id, prNumber: input.prNumber, lastUpdatedAt: now, lastHeadSha: pull.head.sha })
+    .values({ repositoryId: repo.id, prNumber: input.prNumber, lastUpdatedAt: now, lastHeadSha: pull.head.sha, headRepo })
     .onConflictDoUpdate({
       target: [prSeen.repositoryId, prSeen.prNumber],
-      set: { lastUpdatedAt: now, lastHeadSha: pull.head.sha },
+      set: { lastUpdatedAt: now, lastHeadSha: pull.head.sha, headRepo },
     })
     .run();
   return jobId;
@@ -214,7 +223,7 @@ export function markJobFinished(
   db: Db,
   jobId: string,
   patch: {
-    status: 'succeeded' | 'partial' | 'failed';
+    status: 'succeeded' | 'partial' | 'failed' | 'cancelled';
     errorCode?: string;
     errorMessage?: string;
     usageJson?: string;

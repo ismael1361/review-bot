@@ -4,6 +4,7 @@ import type { Db } from '../db/client';
 import { agentMessages, events, jobs } from '../db/schema';
 import type { EventBus } from '../events/bus';
 import { listFindings } from '../jobs/findings';
+import { CancelledError } from '../jobs/worker';
 import { getAdapter } from './adapters';
 import type { ChatInput, ChatMessage, ChatResult, ProviderKind } from './adapters/types';
 import { buildSystemPrompt, type ProfileSnapshot } from './prompt';
@@ -22,6 +23,7 @@ export type LoopDeps = {
   chatImpl?: (input: ChatInput) => Promise<ChatResult>;
   fetchImpl?: typeof fetch;
   now?: () => number;
+  shouldCancel?: () => boolean;
 };
 
 export type LoopResult = {
@@ -125,6 +127,9 @@ export async function runAgentLoop(deps: LoopDeps): Promise<LoopResult> {
   };
 
   while (turns < snapshot.maxTurns) {
+    if (deps.shouldCancel?.()) {
+      throw new CancelledError('job_cancelled');
+    }
     if (now() - startedAt > snapshot.maxDurationSec * 1000 || usage.input + usage.output > snapshot.maxTotalTokens) {
       return finishForced();
     }

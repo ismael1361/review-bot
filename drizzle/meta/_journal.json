@@ -15,6 +15,13 @@
       "when": 1792853208350,
       "tag": "0001_workable_doctor_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792935920909,
+      "tag": "0002_worthless_warlock",
+      "breakpoints": true
     }
   ]
 }
