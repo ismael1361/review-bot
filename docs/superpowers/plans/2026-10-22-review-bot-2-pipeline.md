@@ -2797,7 +2797,7 @@ Expected: todos verdes.
 - Consumes: rotas das Tasks 10-11, `DiffLine` de `src/github/diff`.
 - Produces: `<Markdown source={string} />` (renderização sanitizada: títulos, parágrafos, listas, negrito, código inline, blocos de código); `<DiffBlock lines={DiffLine[]} targetLine={number} />`; `<SeverityChip severity={...} />`; `useEvents(onEvent)`.
 
-- [ ] **Step 1: Implementar os componentes**
+- [x] **Step 1: Implementar os componentes**
 
 `src/web/components/Markdown.tsx`:
 
@@ -2960,7 +2960,7 @@ export function useEvents(onEvent: (type: string) => void): void {
 }
 ```
 
-- [ ] **Step 2: Reescrever `Queue.tsx`, `Reviews.tsx`, `Dashboard.tsx` e criar `ReviewDetail.tsx`**
+- [x] **Step 2: Reescrever `Queue.tsx`, `Reviews.tsx`, `Dashboard.tsx` e criar `ReviewDetail.tsx`**
 
 `src/web/pages/Queue.tsx` (ações completas):
 
@@ -3152,7 +3152,7 @@ Em `src/web/app.tsx`, adicionar a rota `<Route path="/reviews/:id" element={<Rev
 
 `src/web/pages/Dashboard.tsx`: adicionar `useEvents(refresh)` e o card de tokens (input/output) usando o novo campo `tokens`.
 
-- [ ] **Step 3: Escrever os testes de componente**
+- [x] **Step 3: Escrever os testes de componente**
 
 `tests/web/markdown.test.tsx`:
 
@@ -3247,12 +3247,12 @@ describe('ReviewDetail', () => {
 });
 ```
 
-- [ ] **Step 4: Rodar e verificar**
+- [x] **Step 4: Rodar e verificar**
 
 Run: `yarn test tests/web; yarn build:web`
 Expected: PASS e build gerando `dist/web`.
 
-- [ ] **Step 5: Checkpoint**
+- [x] **Step 5: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test; yarn build:web`
 Expected: todos verdes.

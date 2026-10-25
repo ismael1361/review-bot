@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
 import { Setup } from './pages/Setup';
 import { Dashboard } from './pages/Dashboard';
+import { ReviewDetail } from './pages/ReviewDetail';
 import { Reviews } from './pages/Reviews';
 import { Queue } from './pages/Queue';
 import { Password } from './pages/Password';
@@ -31,6 +32,7 @@ export function App() {
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="/reviews" element={<Reviews />} />
+          <Route path="/reviews/:id" element={<ReviewDetail />} />
           <Route path="/queue" element={<Queue />} />
           <Route path="/password" element={<Password />} />
           <Route path="/settings/*" element={<SettingsLayout />} />

@@ -2,13 +2,28 @@
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEvents } from '../../src/web/hooks/useEvents';
+
+const EVENT_TYPES = [
+  'queue.updated',
+  'job.created',
+  'job.started',
+  'job.progress',
+  'job.finished',
+  'job.retry_scheduled',
+  'job.failed',
+  'job.partial',
+  'poll.updated',
+  'poll.skipped',
+  'poller.paused',
+  'review.published',
+];
 
 class FakeEventSource {
   static instances: FakeEventSource[] = [];
 
   readonly url: string;
+  readonly listeners = new Map<string, Set<(event: MessageEvent) => void>>();
   onopen: (() => void) | null = null;
   closed = false;
 
@@ -17,22 +32,27 @@ class FakeEventSource {
     FakeEventSource.instances.push(this);
   }
 
+  addEventListener(type: string, listener: (event: MessageEvent) => void) {
+    const listeners = this.listeners.get(type) ?? new Set();
+    listeners.add(listener);
+    this.listeners.set(type, listeners);
+  }
+
+  emit(type: string) {
+    const event = { type } as MessageEvent;
+    for (const listener of this.listeners.get(type) ?? []) {
+      listener(event);
+    }
+  }
+
   close() {
     this.closed = true;
   }
 }
 
-function Probe() {
-  useEvents([['dashboard']]);
+function Probe({ onEvent }: { onEvent: (type: string) => void }) {
+  useEvents(onEvent);
   return null;
-}
-
-function renderProbe(client: QueryClient) {
-  return render(
-    <QueryClientProvider client={client}>
-      <Probe />
-    </QueryClientProvider>,
-  );
 }
 
 describe('useEvents', () => {
@@ -42,35 +62,56 @@ describe('useEvents', () => {
     vi.unstubAllGlobals();
   });
 
-  it('abre o SSE e invalida as queries no onopen, fechando ao desmontar', () => {
+  it('abre o SSE, assina os eventos, avisa no open e fecha ao desmontar', () => {
     vi.stubGlobal('EventSource', FakeEventSource);
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    const onEvent = vi.fn();
 
-    const view = renderProbe(client);
+    const view = render(<Probe onEvent={onEvent} />);
 
     expect(FakeEventSource.instances).toHaveLength(1);
     const source = FakeEventSource.instances[0]!;
     expect(source.url).toBe('/api/events');
     expect(source.onopen).toBeTypeOf('function');
+    for (const type of EVENT_TYPES) {
+      expect(source.listeners.has(type)).toBe(true);
+    }
 
     source.onopen!();
+    expect(onEvent).toHaveBeenCalledWith('open');
 
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['dashboard'] });
+    source.emit('review.published');
+    expect(onEvent).toHaveBeenCalledWith('review.published');
 
     view.unmount();
     expect(source.closed).toBe(true);
   });
 
+  it('não reconecta quando o callback muda e usa o callback mais recente', () => {
+    vi.stubGlobal('EventSource', FakeEventSource);
+    const first = vi.fn();
+    const second = vi.fn();
+
+    const view = render(<Probe onEvent={first} />);
+    const source = FakeEventSource.instances[0]!;
+    expect(FakeEventSource.instances).toHaveLength(1);
+
+    view.rerender(<Probe onEvent={second} />);
+
+    expect(FakeEventSource.instances).toHaveLength(1);
+
+    source.emit('queue.updated');
+    expect(second).toHaveBeenCalledWith('queue.updated');
+    expect(first).not.toHaveBeenCalledWith('queue.updated');
+  });
+
   it('não abre conexão quando EventSource não está disponível', () => {
     vi.stubGlobal('EventSource', undefined);
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    const onEvent = vi.fn();
 
-    const view = renderProbe(client);
+    const view = render(<Probe onEvent={onEvent} />);
 
     expect(FakeEventSource.instances).toHaveLength(0);
-    expect(invalidate).not.toHaveBeenCalled();
+    expect(onEvent).not.toHaveBeenCalled();
 
     view.unmount();
   });

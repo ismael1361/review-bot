@@ -1,0 +1,303 @@
+import { useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, ApiRequestError } from '../api';
+import { Button, Card, EmptyState, ErrorText } from '../components/ui';
+import { Markdown } from '../components/Markdown';
+import { DiffBlock } from '../components/DiffBlock';
+import { SeverityChip } from '../components/SeverityChip';
+import type { DiffLine } from '../../github/diff';
+
+type Finding = {
+  id: string;
+  path: string;
+  endLine: number | null;
+  severity: string;
+  title: string;
+  bodyMd: string;
+  suggestionMd: string | null;
+  status: string;
+  snippetJson: string | null;
+};
+
+type ReviewRecord = {
+  id: string;
+  body: string;
+  url: string | null;
+  status: string;
+  commentsPosted: number;
+  commentsFallback: number;
+  postedAt: number | null;
+};
+
+type JobRecord = {
+  id: string;
+  prTitle: string;
+  prUrl: string;
+  headSha: string;
+  status: string;
+  usageJson: string | null;
+};
+
+type TranscriptEntry = { id: string; seq: number; role: string; toolName: string | null };
+
+type ReviewPayload = {
+  review: ReviewRecord;
+  job: JobRecord | null;
+  findings: Finding[] | null;
+  transcript: TranscriptEntry[] | null;
+};
+
+type Usage = { input: number; output: number; turns: number | null };
+
+const TERMINAL_STATUSES = new Set(['succeeded', 'partial', 'failed']);
+
+function stripComments(body: string): string {
+  return body.replace(/<!--[\s\S]*?-->/g, '').trim();
+}
+
+function finiteNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function parseUsage(raw: string | null | undefined): Usage | null {
+  if (!raw) {
+    return null;
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return null;
+    }
+    const usage = parsed as Record<string, unknown>;
+    return {
+      input: finiteNumber(usage.input) ?? 0,
+      output: finiteNumber(usage.output) ?? 0,
+      turns: finiteNumber(usage.turns),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function isLineNumber(value: unknown): boolean {
+  return value === null || (typeof value === 'number' && Number.isInteger(value));
+}
+
+function isDiffLine(value: unknown): value is DiffLine {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const line = value as Record<string, unknown>;
+  return (
+    (line.type === 'add' || line.type === 'del' || line.type === 'context') &&
+    isLineNumber(line.oldLine) &&
+    isLineNumber(line.newLine) &&
+    typeof line.text === 'string'
+  );
+}
+
+function parseSnippet(raw: string | null | undefined): { lines: DiffLine[]; targetLine?: number } | null {
+  if (!raw) {
+    return null;
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return null;
+    }
+    const snippet = parsed as Record<string, unknown>;
+    if (!Array.isArray(snippet.lines)) {
+      return null;
+    }
+    const lines = snippet.lines.filter(isDiffLine);
+    if (lines.length === 0) {
+      return null;
+    }
+    const targetLine =
+      typeof snippet.targetLine === 'number' && Number.isInteger(snippet.targetLine) ? snippet.targetLine : undefined;
+    return { lines, targetLine };
+  } catch {
+    return null;
+  }
+}
+
+export function ReviewDetail() {
+  const { id } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
+  const [error, setError] = useState('');
+  const detail = useQuery({
+    queryKey: ['review', id],
+    queryFn: () => api<ReviewPayload>(`/api/reviews/${id}`),
+    enabled: id !== undefined,
+  });
+  const publish = useMutation({
+    mutationFn: () => {
+      const jobId = detail.data?.job?.id;
+      if (!jobId) {
+        throw new Error('Job indisponível');
+      }
+      return api(`/api/jobs/${jobId}/publish-review`, { method: 'POST' });
+    },
+    onSuccess: () => {
+      setError('');
+      void queryClient.invalidateQueries({ queryKey: ['review', id] });
+      void queryClient.invalidateQueries({ queryKey: ['reviews'] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      void queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    },
+    onError: (mutationError) => {
+      setError(
+        mutationError instanceof ApiRequestError ? mutationError.message : 'Não foi possível republicar a review.',
+      );
+    },
+  });
+
+  if (detail.isLoading) {
+    return <p className="text-sm text-[var(--text-muted)]">Carregando…</p>;
+  }
+
+  if (detail.isError) {
+    const notFound = detail.error instanceof ApiRequestError && detail.error.status === 404;
+    return <ErrorText>{notFound ? 'Review não encontrada.' : 'Falha ao carregar a review.'}</ErrorText>;
+  }
+
+  if (!detail.data) {
+    return <EmptyState>Review indisponível.</EmptyState>;
+  }
+
+  const review = detail.data.review;
+  const job = detail.data.job;
+  const findings = detail.data.findings ?? [];
+  const transcript = detail.data.transcript ?? [];
+  const usage = parseUsage(job?.usageJson);
+  const showPublish = job !== null && TERMINAL_STATUSES.has(job.status);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-[var(--text)]">{job?.prTitle ?? 'Review'}</h1>
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
+            {job?.prUrl ? (
+              <a className="text-[var(--link)] underline-offset-2 hover:underline" href={job.prUrl} target="_blank" rel="noreferrer">
+                {job.prUrl}
+              </a>
+            ) : (
+              'Job indisponível'
+            )}
+            {job?.headSha ? ` · head ${job.headSha.slice(0, 7)}` : ''}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {review.url ? (
+            <a
+              className="rounded-lg border border-[var(--border-strong)] px-3 py-2 text-sm text-[var(--text)] transition hover:bg-[var(--border)]"
+              href={review.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Abrir no GitHub
+            </a>
+          ) : null}
+          {showPublish ? (
+            <Button
+              type="button"
+              onClick={() => {
+                setError('');
+                publish.mutate();
+              }}
+              disabled={publish.isPending}
+            >
+              {publish.isPending ? 'Republicando…' : 'Republicar'}
+            </Button>
+          ) : null}
+        </div>
+      </div>
+      <ErrorText>{error}</ErrorText>
+      <Card title="Corpo do review">
+        <Markdown source={stripComments(review.body)} />
+        {review.status === 'fallback' ? (
+          <p className="mt-2 text-xs text-[var(--tertiary)]">Publicado com fallback: achados no corpo do review.</p>
+        ) : null}
+      </Card>
+      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+        <Card title={`Achados (${findings.length})`}>
+          {findings.length === 0 ? (
+            <EmptyState>Nenhum achado registrado.</EmptyState>
+          ) : (
+            <ul className="space-y-4">
+              {findings.map((finding) => {
+                const snippet = parseSnippet(finding.snippetJson);
+                return (
+                  <li key={finding.id} className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <SeverityChip severity={finding.severity} />
+                      <span className="text-sm font-semibold text-[var(--text)]">{finding.title}</span>
+                      <span className="ml-auto font-mono text-xs text-[var(--text-muted)]">
+                        {finding.path}
+                        {typeof finding.endLine === 'number' ? `:${finding.endLine}` : ''}
+                      </span>
+                    </div>
+                    {snippet ? (
+                      <div className="mb-2">
+                        <DiffBlock lines={snippet.lines} targetLine={snippet.targetLine} fileName={finding.path} />
+                      </div>
+                    ) : null}
+                    <Markdown source={finding.bodyMd} />
+                    {finding.suggestionMd ? (
+                      <div className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--sunken)] p-2">
+                        <p className="mb-1 text-xs font-semibold text-[var(--primary)]">Sugestão</p>
+                        <pre className="overflow-x-auto font-mono text-xs text-[var(--text)]">{finding.suggestionMd}</pre>
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+        <div className="space-y-4">
+          <Card title="Execução">
+            <dl className="space-y-1 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-[var(--text-muted)]">Status</dt>
+                <dd className="text-[var(--text)]">{job?.status ?? '—'}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-[var(--text-muted)]">Turnos</dt>
+                <dd className="text-[var(--text)]">{usage?.turns ?? '—'}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-[var(--text-muted)]">Tokens</dt>
+                <dd className="text-[var(--text)]">
+                  {usage ? `${usage.input} in · ${usage.output} out` : '—'}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-[var(--text-muted)]">Comentários</dt>
+                <dd className="text-[var(--text)]">
+                  {review.commentsPosted} inline · {review.commentsFallback} no corpo
+                </dd>
+              </div>
+            </dl>
+          </Card>
+          <Card title="Transcrição">
+            {transcript.length === 0 ? (
+              <EmptyState>Nenhuma mensagem registrada.</EmptyState>
+            ) : (
+              <ul className="space-y-1 font-mono text-xs text-[var(--text-muted)]">
+                {transcript.slice(-40).map((message) => (
+                  <li key={message.id}>
+                    #{message.seq} {message.role}
+                    {message.toolName ? ` · ${message.toolName}` : ''}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
