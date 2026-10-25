@@ -6,6 +6,7 @@ import { events } from '../db/schema';
 import type { EventBus } from '../events/bus';
 import { GitHubError } from '../github/client';
 import type { LookupFn } from '../shared/url-guard';
+import { dispatchEvent } from '../webhooks/dispatcher';
 import {
   RETRY_DELAYS_MS,
   RetryableJobError,
@@ -100,6 +101,20 @@ export function createWorker(deps: WorkerDeps, workerId: string): { tick: () => 
         markJobFinished(deps.db, job.id, { status: 'failed', errorCode: code, errorMessage: message, now: clock(), workerId });
         emit(deps, job.id, 'job.failed', `Falha: ${message}`, { code });
         deps.bus.publish({ type: 'job.failed.webhook', data: { jobId: job.id, code, message }, at: clock() });
+        try {
+          await dispatchEvent(
+            {
+              db: deps.db,
+              encryptionKey: deps.encryptionKey,
+              allowPrivate: deps.allowPrivate ?? false,
+              fetchImpl: deps.fetchImpl,
+            },
+            'job.failed',
+            { jobId: job.id, code, message },
+          );
+        } catch (dispatchError) {
+          deps.logger.warn({ err: dispatchError }, 'falha ao disparar webhook job.failed');
+        }
       }
     } finally {
       running = false;

@@ -23,7 +23,7 @@ describe('credencial GitHub', () => {
     const cookie = await setupRootAndLogin(app, deps);
     const save = await app.inject({ method: 'PUT', url: '/api/settings/github', headers: { cookie }, payload: { pat: 'ghp_1234567890abcdefghij' } });
     expect(save.statusCode).toBe(200);
-    expect(save.json().credentials).toEqual({ login: 'octocat', patLast4: 'ghij', scopes: 'repo' });
+    expect(save.json().credentials).toEqual({ login: 'octocat', patLast4: 'ghij', scopes: 'repo', validatedAt: expect.any(Number) });
     expect(save.body).not.toContain('ghp_1234567890abcdefghij');
     await app.close();
   });

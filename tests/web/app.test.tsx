@@ -42,9 +42,25 @@ describe('App setup gate', () => {
         return new Response(JSON.stringify({ user: { id: '1', username: 'root', role: 'admin', isRoot: true } }), { status: 200 });
       }
       if (url === '/api/dashboard') {
-        return new Response(JSON.stringify({ queue: { queued: 0, running: 0 }, reviews: { total: 0, last24h: 0 }, failures: 0 }), {
-          status: 200,
-        });
+        return new Response(
+          JSON.stringify({
+            queue: { queued: 0, running: 0, paused: false, concurrency: 1 },
+            reviews: { total: 0, last24h: 0, last7d: 0 },
+            failures: 0,
+            failuresLast7d: 0,
+            failureRate7d: 0,
+            tokens: { input: 0, output: 0, last7dInput: 0, last7dOutput: 0 },
+            avgDurationSec7d: null,
+            current: null,
+            liveQueue: [],
+            recentReviews: [],
+            findings: { critical: 0, medium: 0, suggestion: 0, strength: 0, total: 0, topRepositories: [] },
+            trends: [],
+            health: { pollerPaused: false, queuePaused: false, pollAuthFailures: 0, lastPollAt: null, webhookFailures24h: 0 },
+            onboarding: { githubConfigured: false, activeProfile: false, pollingEnabled: false },
+          }),
+          { status: 200 },
+        );
       }
       return new Response(JSON.stringify({ error: { code: 'not_found', message: 'Rota não encontrada' } }), { status: 404 });
     });

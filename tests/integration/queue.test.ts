@@ -3,8 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { v7 as uuidv7 } from 'uuid';
 import type { AppDeps } from '../../src/api/app';
 import { activateProfile, createProfile, type ProfileInputType } from '../../src/ai/profiles';
+import { encryptSecret } from '../../src/auth/crypto';
 import type { Db } from '../../src/db/client';
-import { events, jobs, prSeen, repositories } from '../../src/db/schema';
+import { events, jobs, prSeen, repositories, webhookDeliveries, webhooks } from '../../src/db/schema';
 import { setSetting } from '../../src/db/settings';
 import { GitHubError } from '../../src/github/client';
 import { saveGithubCredentials } from '../../src/github/credentials';
@@ -307,6 +308,43 @@ describe('worker', () => {
     expect(job.errorCode).toBe('internal_error');
     expect(job.errorMessage).toBe('boom');
     expect(jobEventTypes(d.db, id)).toContain('job.failed');
+  });
+
+  it('entrega o webhook job.failed quando o job esgota as tentativas', async () => {
+    const d = await makeDeps();
+    const now = Date.now();
+    const id = insertJob(d.db, { queuedAt: now, nextAttemptAt: now });
+    d.db
+      .insert(webhooks)
+      .values({
+        id: uuidv7(),
+        url: 'https://example.com/hook',
+        secretEncrypted: encryptSecret(d.encryptionKey, 'segredo-do-webhook'),
+        eventsJson: JSON.stringify(['job.failed']),
+        enabled: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+    const fetchImpl = vi.fn(async () => new Response('{}', { status: 200 })) as unknown as typeof fetch;
+    const worker = createWorker(
+      {
+        ...d,
+        fetchImpl,
+        allowPrivate: true,
+        handler: async () => {
+          throw new Error('boom');
+        },
+        now: () => now,
+      },
+      'w1',
+    );
+
+    expect(await worker.tick()).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const delivery = d.db.select().from(webhookDeliveries).where(eq(webhookDeliveries.event, 'job.failed')).get();
+    expect(delivery).toMatchObject({ success: true, statusCode: 200 });
+    expect(d.db.select().from(jobs).where(eq(jobs.id, id)).get()!.status).toBe('failed');
   });
 
   it('cancelamento durante o handler não é sobrescrito pelo sucesso', async () => {

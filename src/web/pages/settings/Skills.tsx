@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiRequestError } from '../../api';
-import { Button, Card, ErrorText, Field, Input } from '../../components/ui';
+import { Button, Card, ErrorText, Field, Input, PageHeader } from '../../components/ui';
 
 type Skill = { id: string; name: string; description: string; contentMd: string };
 
@@ -106,7 +106,8 @@ export function Skills() {
 
   return (
     <div className="space-y-4">
-      <Card title="Skills">
+      <PageHeader title="Skills" subtitle="Conhecimento reutilizável aplicado aos perfis" />
+      <Card>
         {notice ? <p className="mb-3 text-sm text-[var(--success)]">{notice}</p> : null}
         {skills.isError ? <p className="mb-2 text-sm text-[var(--danger)]">Falha ao carregar as skills.</p> : null}
         {skills.isLoading ? <p className="py-4 text-sm text-[var(--text-muted)]">Carregando skills…</p> : null}

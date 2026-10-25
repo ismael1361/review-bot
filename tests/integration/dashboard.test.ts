@@ -9,12 +9,28 @@ describe('dashboard e fila', () => {
     const { app, deps } = await createTestApp();
     const cookie = await setupRootAndLogin(app, deps);
     const dashboard = await app.inject({ method: 'GET', url: '/api/dashboard', headers: { cookie } });
-    expect(dashboard.json()).toEqual({ queue: { queued: 0, running: 0 }, reviews: { total: 0, last24h: 0, last7d: 0 }, failures: 0, tokens: { input: 0, output: 0 } });
+    expect(dashboard.json()).toMatchObject({
+      queue: { queued: 0, running: 0, paused: false, concurrency: 1 },
+      reviews: { total: 0, last24h: 0, last7d: 0 },
+      failures: 0,
+      failuresLast7d: 0,
+      failureRate7d: 0,
+      tokens: { input: 0, output: 0, last7dInput: 0, last7dOutput: 0 },
+      avgDurationSec7d: null,
+      current: null,
+      liveQueue: [],
+      recentReviews: [],
+      findings: { critical: 0, medium: 0, suggestion: 0, strength: 0, total: 0, topRepositories: [] },
+      health: { pollerPaused: false, queuePaused: false, pollAuthFailures: 0, lastPollAt: null, webhookFailures24h: 0 },
+      onboarding: { githubConfigured: false, activeProfile: false, pollingEnabled: false },
+    });
+    expect(dashboard.json().trends).toHaveLength(7);
 
     const pause = await app.inject({ method: 'POST', url: '/api/queue/pause', headers: { cookie } });
     expect(pause.json().paused).toBe(true);
     const queue = await app.inject({ method: 'GET', url: '/api/queue', headers: { cookie } });
     expect(queue.json().paused).toBe(true);
+    expect(queue.json().concurrency).toBe(1);
     const resume = await app.inject({ method: 'POST', url: '/api/queue/resume', headers: { cookie } });
     expect(resume.json().paused).toBe(false);
     await app.close();
@@ -29,6 +45,8 @@ describe('dashboard e fila', () => {
     expect(valid.json().settings.pollingIntervalSec).toBe(120);
     const read = await app.inject({ method: 'GET', url: '/api/settings/system', headers: { cookie } });
     expect(read.json().settings.concurrency).toBe(2);
+    const queue = await app.inject({ method: 'GET', url: '/api/queue', headers: { cookie } });
+    expect(queue.json().concurrency).toBe(2);
     await app.close();
   });
 });

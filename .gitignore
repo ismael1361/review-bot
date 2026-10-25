@@ -3,4 +3,5 @@ dist/
 data/
 .env
 coverage/
+test-results/
 .superpowers/*

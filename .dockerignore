@@ -3,3 +3,7 @@ dist
 data
 .env
 coverage
+tests/e2e
+test-results
+playwright-report
+.e2e-data

@@ -143,6 +143,49 @@ describe('rotas de jobs', () => {
     await app.close();
   });
 
+  it('lista jobs com nome do repositório e campos anteriores', async () => {
+    const { app, deps, cookie } = await setup();
+    const id = seedJob(deps.db, 'queued');
+
+    const response = await app.inject({ method: 'GET', url: '/api/jobs', headers: { cookie } });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().jobs[0]).toMatchObject({
+      id,
+      repositoryId: 'r1',
+      prNumber: 7,
+      prTitle: 'fix: x',
+      status: 'queued',
+      attempts: 1,
+      repoFullName: 'a/b',
+    });
+    await app.close();
+  });
+
+  it('calcula posição global da fila por prioridade e ordem de chegada', async () => {
+    const { app, deps, cookie } = await setup();
+    const low = seedJob(deps.db, 'queued', { prNumber: 1, priority: 0, queuedAt: 1_000 });
+    const high = seedJob(deps.db, 'queued', { prNumber: 2, priority: 5, queuedAt: 2_000 });
+    const older = seedJob(deps.db, 'queued', { prNumber: 3, priority: 0, queuedAt: 500 });
+    const running = seedJob(deps.db, 'running', { prNumber: 4, priority: 10, queuedAt: 3_000, startedAt: 3_500 });
+
+    const page = await app.inject({ method: 'GET', url: '/api/jobs?limit=3', headers: { cookie } });
+    const rows = page.json().jobs as Array<{ id: string; queuePosition: number | null }>;
+    const positionById = new Map(rows.map((row) => [row.id, row.queuePosition]));
+    expect(positionById.get(high)).toBe(1);
+    expect(positionById.get(low)).toBe(3);
+    expect(positionById.has(older)).toBe(false);
+    expect(positionById.get(running)).toBeNull();
+
+    const queued = await app.inject({ method: 'GET', url: '/api/jobs?status=queued&limit=10', headers: { cookie } });
+    const queuedPositions = new Map(
+      (queued.json().jobs as Array<{ id: string; queuePosition: number | null }>).map((row) => [row.id, row.queuePosition]),
+    );
+    expect(queuedPositions.get(older)).toBe(2);
+    expect(queuedPositions.get(high)).toBe(1);
+    await app.close();
+  });
+
   it('rejeita cancelamento em estado inválido', async () => {
     const { app, deps, cookie } = await setup();
     const id = seedJob(deps.db, 'failed');

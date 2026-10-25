@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiRequestError } from '../../api';
-import { Button, Card, ErrorText, Field, Input } from '../../components/ui';
+import { Button, Card, ErrorText, Field, Input, PageHeader } from '../../components/ui';
 
 type Provider = 'openai_compatible' | 'anthropic';
 
@@ -289,7 +289,8 @@ export function Profiles() {
 
   return (
     <div className="space-y-4">
-      <Card title="Perfis de IA">
+      <PageHeader title="Perfis de IA" subtitle="Modelos, limites e skills do agente" />
+      <Card>
         {profiles.isError ? <p className="mb-2 text-sm text-[var(--danger)]">Falha ao carregar os perfis.</p> : null}
         {profiles.isLoading ? <p className="py-4 text-sm text-[var(--text-muted)]">Carregando perfis…</p> : null}
         <ul className="divide-y divide-[var(--border)] text-sm">

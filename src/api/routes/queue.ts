@@ -4,6 +4,7 @@ import type { AppDeps } from '../app';
 import { jobs } from '../../db/schema';
 import { requireRole } from '../../auth/guards';
 import { getSetting, setSetting } from '../../db/settings';
+import { getSystemSettings } from './settings-system';
 import { audit } from '../../audit/audit';
 
 const QUEUE_PAUSED_KEY = 'queue_paused';
@@ -17,6 +18,7 @@ export function registerQueueRoutes(app: FastifyInstance, deps: AppDeps): void {
     queued: deps.db.select({ value: count() }).from(jobs).where(eq(jobs.status, 'queued')).get()?.value ?? 0,
     running: deps.db.select({ value: count() }).from(jobs).where(eq(jobs.status, 'running')).get()?.value ?? 0,
     paused: isQueuePaused(deps.db),
+    concurrency: getSystemSettings(deps.db).concurrency,
   }));
 
   app.post('/api/queue/pause', { preHandler: requireRole(deps, 'operator', 'admin') }, async (request) => {

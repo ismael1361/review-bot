@@ -32,11 +32,11 @@ export function Setup() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] p-4 text-[var(--text)]">
-      <form onSubmit={submit} className="w-full max-w-sm">
-        <div className="mb-5 text-center">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] p-6 text-[var(--text)] sm:p-8">
+      <form onSubmit={submit} className="w-full max-w-md">
+        <div className="mb-6 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">review-bot</p>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">Painel de reviews automáticas de pull requests</p>
+          <p className="mt-2 text-sm text-[var(--text-muted)]">Painel de reviews automáticas de pull requests</p>
         </div>
         <Card title="Configuração inicial">
           <p className="mb-4 text-sm text-[var(--text-muted)]">

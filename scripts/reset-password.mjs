@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import { hash } from '@node-rs/argon2';
+import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
@@ -39,9 +40,20 @@ if (password.length < 12) {
 }
 
 const passwordHash = await hash(password, { memoryCost: 65536, timeCost: 3, parallelism: 1 });
+const now = Date.now();
 db.transaction(() => {
-  db.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?').run(passwordHash, Date.now(), user.id);
+  db.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?').run(passwordHash, now, user.id);
   db.prepare('DELETE FROM sessions WHERE user_id = ?').run(user.id);
+  db.prepare('INSERT INTO audit_log (id, user_id, action, target_type, target_id, data_json, ip, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+    randomUUID(),
+    user.id,
+    'user.password_reset',
+    'user',
+    user.id,
+    JSON.stringify({ username: username.toLowerCase(), source: 'reset-password-script' }),
+    null,
+    now,
+  );
 })();
 db.close();
 console.log('Senha redefinida e sessões revogadas.');

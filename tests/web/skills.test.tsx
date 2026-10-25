@@ -45,6 +45,7 @@ describe('Skills', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderSkills();
 
+    expect(await screen.findByRole('heading', { name: 'Skills' })).toBeInTheDocument();
     await screen.findByText('Conteúdo da skill');
     await userEvent.click(screen.getByRole('button', { name: 'Excluir' }));
 

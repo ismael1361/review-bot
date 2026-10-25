@@ -66,6 +66,7 @@ describe('Profiles', () => {
     vi.stubGlobal('fetch', fetchMock);
     renderProfiles();
 
+    expect(await screen.findByRole('heading', { name: 'Perfis de IA' })).toBeInTheDocument();
     await userEvent.click(await screen.findByRole('button', { name: 'Editar' }));
     const model = screen.getByLabelText('Modelo');
     expect(model).toHaveValue('modelo-antigo');

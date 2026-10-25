@@ -479,7 +479,7 @@ Expected: todos verdes.
 - Consumes: rotas existentes, `createLogger`, crypto, `assertSafeUrl`.
 - Produces: cobertura automatizada de segredos em repouso, redaction, SSRF, RBAC e CSP.
 
-- [ ] **Step 1: Permitir destino no logger**
+- [x] **Step 1: Permitir destino no logger**
 
 Em `src/logger.ts`:
 
@@ -511,7 +511,7 @@ export function createLogger(config: Config, destination?: DestinationStream): L
 }
 ```
 
-- [ ] **Step 2: Escrever `tests/integration/security.test.ts`**
+- [x] **Step 2: Escrever `tests/integration/security.test.ts`**
 
 ```ts
 import { describe, expect, it, vi } from 'vitest';
@@ -595,12 +595,12 @@ describe('segurança', () => {
 });
 ```
 
-- [ ] **Step 3: Rodar e verificar**
+- [x] **Step 3: Rodar e verificar**
 
 Run: `yarn test tests/integration/security.test.ts`
 Expected: PASS.
 
-- [ ] **Step 4: Checkpoint**
+- [x] **Step 4: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes.
@@ -617,7 +617,7 @@ Expected: todos verdes.
 - Consumes: build (`yarn build`), servidor em porta 3300 com dados temporários.
 - Produces: suíte E2E executável com `yarn e2e`.
 
-- [ ] **Step 1: Configurar `playwright.config.ts`**
+- [x] **Step 1: Configurar `playwright.config.ts`**
 
 ```ts
 import { defineConfig } from '@playwright/test';
@@ -645,7 +645,7 @@ export default defineConfig({
 
 Adicionar ao `package.json`: `"e2e": "playwright test"` e devDependency `"@playwright/test": "^1.50.0"`.
 
-- [ ] **Step 2: Escrever `tests/e2e/setup-login.spec.ts`**
+- [x] **Step 2: Escrever `tests/e2e/setup-login.spec.ts`**
 
 ```ts
 import { expect, test } from '@playwright/test';
@@ -669,7 +669,7 @@ test('setup, dashboard, logout e login', async ({ page }) => {
 });
 ```
 
-- [ ] **Step 3: Escrever `tests/e2e/review-detail.spec.ts`**
+- [x] **Step 3: Escrever `tests/e2e/review-detail.spec.ts`**
 
 ```ts
 import { expect, test } from '@playwright/test';
@@ -695,12 +695,14 @@ test('detalhe da review renderiza body, diff e markdown', async ({ page }) => {
 });
 ```
 
-- [ ] **Step 4: Rodar e verificar**
+- [x] **Step 4: Rodar e verificar**
 
 Run: `yarn playwright install chromium` (uma vez) e `yarn e2e`
 Expected: PASS nos dois testes. Usar `E2E_DATA_DIR` temporário e remover `.e2e-data` antes de rodar em CI.
 
-- [ ] **Step 5: Checkpoint**
+Verificação local: `bunx playwright test` 2/2 com Chrome do sistema (`PLAYWRIGHT_CHANNEL` override), sem download de Chromium.
+
+- [x] **Step 5: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test; yarn e2e`
 Expected: todos verdes.
@@ -718,7 +720,7 @@ Expected: todos verdes.
 - Consumes: Dockerfile, compose, scripts, variáveis de ambiente.
 - Produces: guia operacional completo e checklist AC-01..AC-13.
 
-- [ ] **Step 1: Atualizar `README.md`**
+- [x] **Step 1: Atualizar `README.md`**
 
 Seções obrigatórias:
 
@@ -732,7 +734,7 @@ Seções obrigatórias:
 - Segurança: chave de criptografia, perda da chave, allowlist de URLs privadas, aviso de envio de código ao provedor.
 - Limitações da v1 (fora de escopo).
 
-- [ ] **Step 2: Criar `docs/operations.md`**
+- [x] **Step 2: Criar `docs/operations.md`**
 
 Conteúdo mínimo:
 
@@ -743,18 +745,18 @@ Conteúdo mínimo:
 - Procedimento de restore: parar container, restaurar arquivo do backup, subir.
 - Build multi-arquitetura: `docker buildx build --platform linux/amd64,linux/arm64 -t review-bot:latest .`.
 
-- [ ] **Step 3: Checklist de aceite (documento)**
+- [x] **Step 3: Checklist de aceite (documento)**
 
 Copiar os critérios AC-01..AC-13 do spec para `docs/operations.md` com passos de verificação manuais, incluindo:
 
 - AC-01 setup/token; AC-03 review publicada; AC-05 retry; AC-06 fallback 422; AC-07 pausa por auth; AC-08 RBAC; AC-09 segredos; AC-10 retenção; AC-11 cancelamento; AC-12 PR sem achados; AC-13 força/nova execução.
 
-- [ ] **Step 4: Verificar**
+- [x] **Step 4: Verificar**
 
 Run: `docker compose config` (com `.env` preenchido) e revisar links/ comandos do README.
 Expected: compose válido; comandos existentes (`scripts/backup.mjs`, `scripts/reset-password.mjs`, `docker compose exec`).
 
-- [ ] **Step 5: Checkpoint**
+- [x] **Step 5: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test; yarn build`
 Expected: todos verdes.
@@ -793,7 +795,7 @@ export type DashboardData = {
 
 **Regras visuais:** manter a paleta opencode (`--bg`, `--surface`, `--border`, etc.) e usar `design/review-bot-mockups.figcraft` apenas como referência de estrutura, espaçamento, hierarquia, estados e componentes. Nenhuma dependência nova de gráficos; as tendências usam barras proporcionais em CSS.
 
-- [ ] **Step 1: Escrever os testes de integração do dashboard (RED)**
+- [x] **Step 1: Escrever os testes de integração do dashboard (RED)**
 
 Em `tests/integration/dashboard-live.test.ts`, cobrir:
 - fila com `paused` e `concurrency` (configuração do sistema);
@@ -808,21 +810,21 @@ Em `tests/integration/dashboard-live.test.ts`, cobrir:
 Run: `bun run test tests/integration/dashboard-live.test.ts`
 Expected: FAIL pelas novas propriedades ausentes.
 
-- [ ] **Step 2: Implementar o payload do dashboard (GREEN)**
+- [x] **Step 2: Implementar o payload do dashboard (GREEN)**
 
 Em `src/api/routes/dashboard.ts`, fazer consultas agregadas com joins (`jobs`+`repositories`, `reviews`+`jobs`, `reviewFindings`+`jobs`+`repositories`) e montar o payload. Reutilizar `parseTokenUsage` para tokens totais e da janela de 7 dias. `lastPollAt` é o maior `events.createdAt` com `type = 'poll.updated'`. `pollingEnabled` é `githubConfigured && activeProfile`.
 
 Run: `bun run test tests/integration/dashboard-live.test.ts`
 Expected: PASS.
 
-- [ ] **Step 3: Criar helpers e primitivas de UI**
+- [x] **Step 3: Criar helpers e primitivas de UI**
 
 Em `src/web/format.ts`, implementar `formatRelativeTime(epochMs, now?)`, `formatDuration(seconds)`, `formatTokens(value)` e `formatPercent(value)` (pt-BR, sem dependências). Em `src/web/components/ui.tsx`, adicionar:
 - `PageHeader({ title, subtitle, actions })`;
 - `StatCard({ label, value, hint, tone, href })`;
 - `StatusBadge({ status, kind })` para jobs/reviews (`Na fila`, `Em execução`, `Concluída`, `Parcial`, `Falhou`, `Cancelada`, `Fallback`).
 
-- [ ] **Step 4: Reconstruir o Dashboard**
+- [x] **Step 4: Reconstruir o Dashboard**
 
 Estrutura obrigatória:
 1. `PageHeader` com botão **Atualizar** (`refetch`) e indicador de atualização.
@@ -832,7 +834,7 @@ Estrutura obrigatória:
 5. Estados de carregamento, erro e vazio em cada seção; responsivo (uma coluna no mobile).
 6. `useEvents` invalidando `['dashboard']`; nenhuma chamada nova no cliente além do endpoint do dashboard.
 
-- [ ] **Step 5: Conformidade das demais telas com os mockups**
+- [x] **Step 5: Conformidade das demais telas com os mockups**
 
 - **Reviews:** filtros de repositório, status, severidade e período; colunas PR/repo/status/achados/comentários/publicado; selos de status; botão **Atualizar**. Estender `GET /api/reviews` com join em `jobs`/`repositories` e contagem de severidade, mantendo paginação.
 - **Fila:** cards de fila/execução/concorrência; botões **Pausar/Retomar** e **Enfileirar PR** no topo; campo único aceitando URL ou `owner/repo#número`; tabela com PR/repo/status/tentativas/posição/ações; **Cancelar**, **Reprocessar** e **Nova execução** (forçar).
@@ -842,14 +844,14 @@ Estrutura obrigatória:
 - **Setup/Login:** ajustar largura, espaçamento e tipografia ao mockup, mantendo a paleta opencode.
 - **Onboarding:** o card **Primeiros passos** entra no dashboard; a tela dedicada permanece no Plano 4.
 
-- [ ] **Step 6: Testes web**
+- [x] **Step 6: Testes web**
 
 Criar `tests/web/dashboard.test.tsx` cobrindo cards, fila ao vivo, reviews recentes, saúde, tendências e card de primeiros passos (admin). Atualizar `tests/web/reviews.test.tsx`, `tests/web/queue.test.tsx` e `tests/web/review-detail.test.tsx` para os novos rótulos/colunas, sem depender de snapshots frágeis.
 
 Run: `bun run test tests/web/dashboard.test.tsx tests/web/reviews.test.tsx tests/web/queue.test.tsx tests/web/review-detail.test.tsx`
 Expected: PASS.
 
-- [ ] **Step 7: Checkpoint**
+- [x] **Step 7: Checkpoint**
 
 Run: `bun run typecheck; bun run lint; bun run test; bun run build`
 Expected: todos verdes.
@@ -861,17 +863,21 @@ Expected: todos verdes.
 **Files:**
 - Nenhum arquivo novo.
 
-- [ ] **Step 1: Rodar tudo**
+- [x] **Step 1: Rodar tudo**
 
 Run: `bun run typecheck; bun run lint; bun run test; bun run build; bun run e2e`
 Expected: tudo verde; build gera `dist/web` e `dist/server/server.js`.
 
-- [ ] **Step 2: Verificar o container**
+Verificação final 2026-10-25: typecheck/lint limpos, **64 arquivos / 418 testes**, build web+server e **Playwright 2/2** verdes.
+
+- [x] **Step 2: Verificar o container**
 
 Run: `docker compose config` e, se Docker estiver disponível, `docker compose build`.
 Expected: imagem construída; healthcheck definido; volume `data` montado em `/data`.
 
-- [ ] **Step 3: Conferir a cobertura final do spec**
+`docker compose config` passou (porta publicada em `127.0.0.1:3000`, volume `/data`, healthcheck). O `docker compose build` **não pôde ser executado** porque o daemon Docker não está ativo neste ambiente (`dockerDesktopLinuxEngine` ausente); build de imagem permanece pendente.
+
+- [x] **Step 3: Conferir a cobertura final do spec**
 
 | Requisito | Onde |
 |---|---|
@@ -887,4 +893,6 @@ Expected: imagem construída; healthcheck definido; volume `data` montado em `/d
 - [ ] **Step 4: Encerrar com o checklist de aceite**
 
 Executar manualmente o checklist em um VPS/repositório de teste, registrar data e resultado. Sem esse passo, a v1 não é considerada pronta para produção.
+
+**Status:** implementação concluída e verificada localmente; este passo permanece **pendente** por depender de VPS, PAT real, repositório de teste e provedor real (checklist em `docs/operations.md`).
 

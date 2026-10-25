@@ -100,9 +100,15 @@ describe('scripts operacionais', () => {
       updatedAt: number;
     };
     const sessionCount = copy.prepare('SELECT COUNT(*) AS count FROM sessions WHERE user_id = ?').get(id) as { count: number };
+    const audit = copy.prepare('SELECT action, target_type AS targetType, target_id AS targetId FROM audit_log WHERE user_id = ?').get(id) as {
+      action: string;
+      targetType: string;
+      targetId: string;
+    };
     expect(await verify(row.passwordHash, 'senha-nova-muito-longa')).toBe(true);
     expect(row.updatedAt).toBeGreaterThan(now - 1000);
     expect(sessionCount.count).toBe(0);
+    expect(audit).toEqual({ action: 'user.password_reset', targetType: 'user', targetId: id });
     copy.close();
   });
 });

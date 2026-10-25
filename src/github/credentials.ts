@@ -6,14 +6,20 @@ import { setSetting } from '../db/settings';
 
 export { testConnection } from './client';
 
-export type GithubCredentials = { login: string; pat: string; patLast4: string; scopes: string };
+export type GithubCredentials = { login: string; pat: string; patLast4: string; scopes: string; validatedAt: number };
 
 export function getGithubCredentials(db: Db, key: Buffer): GithubCredentials | undefined {
   const row = db.select().from(githubCredentials).where(eq(githubCredentials.id, 'singleton')).get();
   if (!row) {
     return undefined;
   }
-  return { login: row.login, pat: decryptSecret(key, row.patEncrypted), patLast4: row.patLast4, scopes: row.scopes ?? '' };
+  return {
+    login: row.login,
+    pat: decryptSecret(key, row.patEncrypted),
+    patLast4: row.patLast4,
+    scopes: row.scopes ?? '',
+    validatedAt: row.validatedAt,
+  };
 }
 
 export function saveGithubCredentials(db: Db, key: Buffer, input: { login: string; pat: string; scopes: string }): void {
@@ -40,5 +46,5 @@ export function toPublicGithubCredentials(db: Db, key: Buffer) {
   if (!credentials) {
     return null;
   }
-  return { login: credentials.login, patLast4: credentials.patLast4, scopes: credentials.scopes };
+  return { login: credentials.login, patLast4: credentials.patLast4, scopes: credentials.scopes, validatedAt: credentials.validatedAt };
 }
