@@ -35,7 +35,7 @@ export function Audit() {
 
   return (
     <Card title="Auditoria">
-      {audit.isError ? <p className="text-sm text-[var(--link)]">Falha ao carregar a auditoria.</p> : null}
+      {audit.isError ? <p className="text-sm text-[var(--danger)]">Falha ao carregar a auditoria.</p> : null}
       {audit.isLoading ? <p className="text-sm text-[var(--text-muted)]">Carregando…</p> : null}
       {!audit.isLoading && !audit.isError && entries.length === 0 ? (
         <EmptyState>Nenhuma entrada de auditoria.</EmptyState>

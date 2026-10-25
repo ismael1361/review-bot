@@ -1,8 +1,8 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 
-export function Card({ title, children }: { title?: string; children: ReactNode }) {
+export function Card({ title, children, className }: { title?: string; children: ReactNode; className?: string }) {
   return (
-    <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-lg shadow-black/20">
+    <section className={`rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-lg shadow-black/20 ${className ?? ''}`}>
       {title ? <h2 className="mb-3 text-sm font-semibold tracking-wide text-[var(--text)]">{title}</h2> : null}
       {children}
     </section>
@@ -32,7 +32,7 @@ type ButtonVariant = "primary" | "secondary" | "danger";
 const buttonVariants: Record<ButtonVariant, string> = {
   primary: "bg-[var(--primary)] text-[var(--on-primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)]",
   secondary: "border border-[var(--border-strong)] bg-[var(--bg)] text-[var(--text)] hover:bg-[var(--border)]",
-  danger: "border border-[var(--primary)] bg-transparent text-[var(--link)] hover:bg-[var(--primary)] hover:text-[var(--on-primary)] active:bg-[var(--primary-active)]",
+  danger: "border border-[var(--danger)] bg-transparent text-[var(--danger)] hover:bg-[var(--danger)] hover:text-[var(--on-danger)] active:bg-[var(--danger-active)]",
 };
 
 export function Button({ children, className, variant = "primary", ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
@@ -48,7 +48,7 @@ export function Button({ children, className, variant = "primary", ...props }: B
 
 export function ErrorText({ children }: { children: ReactNode }) {
   return children ? (
-    <p role="alert" className="mb-3 text-sm text-[var(--link)]">
+    <p role="alert" className="mb-3 text-sm text-[var(--danger)]">
       {children}
     </p>
   ) : null;

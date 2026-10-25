@@ -42,7 +42,7 @@ export function Password() {
       <form onSubmit={submit} className="max-w-xl">
         <Card title="Alterar senha">
           <ErrorText>{error}</ErrorText>
-          {notice ? <p className="mb-3 text-sm text-[var(--tertiary-hover)]">{notice}</p> : null}
+          {notice ? <p className="mb-3 text-sm text-[var(--success)]">{notice}</p> : null}
           <Field label="Senha atual">
             <Input
               type="password"

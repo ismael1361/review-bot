@@ -65,7 +65,7 @@ const selectClass =
 const textareaClass =
   'w-full rounded-lg border border-[var(--border-strong)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/40';
 const badgeClass = 'ml-2 rounded-full bg-[var(--sunken)] px-2 py-0.5 text-xs text-[var(--text)]';
-const activeBadgeClass = 'ml-2 rounded-full bg-[var(--tertiary)] px-2 py-0.5 text-xs text-[var(--on-tertiary)]';
+const activeBadgeClass = 'ml-2 rounded-full bg-[var(--success)] px-2 py-0.5 text-xs text-[var(--on-success)]';
 
 function messageFor(error: unknown, fallback: string): string {
   return error instanceof ApiRequestError ? error.message : fallback;
@@ -290,7 +290,7 @@ export function Profiles() {
   return (
     <div className="space-y-4">
       <Card title="Perfis de IA">
-        {profiles.isError ? <p className="mb-2 text-sm text-[var(--link)]">Falha ao carregar os perfis.</p> : null}
+        {profiles.isError ? <p className="mb-2 text-sm text-[var(--danger)]">Falha ao carregar os perfis.</p> : null}
         {profiles.isLoading ? <p className="py-4 text-sm text-[var(--text-muted)]">Carregando perfis…</p> : null}
         <ul className="divide-y divide-[var(--border)] text-sm">
           {profiles.data?.profiles.map((profile) => (
@@ -332,7 +332,7 @@ export function Profiles() {
       </Card>
       <Card title={editingId ? 'Editar perfil' : 'Novo perfil'}>
         <ErrorText>{error}</ErrorText>
-        {notice ? <p className="mb-3 text-sm text-[var(--tertiary-hover)]">{notice}</p> : null}
+        {notice ? <p className="mb-3 text-sm text-[var(--success)]">{notice}</p> : null}
         <Field label="Nome">
           <Input name="name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
         </Field>
@@ -450,7 +450,7 @@ export function Profiles() {
         <fieldset className="mb-3 text-sm">
           <legend className="mb-2 block font-medium text-[var(--text)]">Skills</legend>
           {skills.isLoading ? <p className="text-[var(--text-muted)]">Carregando skills…</p> : null}
-          {skills.isError ? <p className="text-[var(--link)]">Falha ao carregar as skills.</p> : null}
+          {skills.isError ? <p className="text-[var(--danger)]">Falha ao carregar as skills.</p> : null}
           <div className="flex flex-wrap gap-y-1">
             {skills.data?.skills.map((skill) => (
               <ProfileCheckbox

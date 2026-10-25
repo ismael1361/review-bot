@@ -218,11 +218,11 @@ export function ReviewDetail() {
       <Card title="Corpo do review">
         <Markdown source={stripComments(review.body)} />
         {review.status === 'fallback' ? (
-          <p className="mt-2 text-xs text-[var(--tertiary)]">Publicado com fallback: achados no corpo do review.</p>
+          <p className="mt-2 text-xs text-[var(--warning)]">Publicado com fallback: achados no corpo do review.</p>
         ) : null}
       </Card>
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <Card title={`Achados (${findings.length})`}>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <Card title={`Achados (${findings.length})`} className="min-w-0">
           {findings.length === 0 ? (
             <EmptyState>Nenhum achado registrado.</EmptyState>
           ) : (
@@ -257,7 +257,7 @@ export function ReviewDetail() {
             </ul>
           )}
         </Card>
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <Card title="Execução">
             <dl className="space-y-1 text-sm">
               <div className="flex justify-between gap-3">

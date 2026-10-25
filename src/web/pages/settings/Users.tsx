@@ -90,8 +90,8 @@ export function Users() {
     <div className="space-y-4">
       <Card title="Usuários">
         <ErrorText>{error}</ErrorText>
-        {notice ? <p className="mb-3 text-sm text-[var(--tertiary-hover)]">{notice}</p> : null}
-        {users.isError ? <p className="mb-2 text-sm text-[var(--link)]">Falha ao carregar os usuários.</p> : null}
+        {notice ? <p className="mb-3 text-sm text-[var(--success)]">{notice}</p> : null}
+        {users.isError ? <p className="mb-2 text-sm text-[var(--danger)]">Falha ao carregar os usuários.</p> : null}
         <ul className="divide-y divide-[var(--border)] text-sm">
           {users.data?.users.map((user) => (
             <li key={user.id} className="py-3">

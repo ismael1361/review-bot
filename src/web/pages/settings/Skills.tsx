@@ -107,8 +107,8 @@ export function Skills() {
   return (
     <div className="space-y-4">
       <Card title="Skills">
-        {notice ? <p className="mb-3 text-sm text-[var(--tertiary-hover)]">{notice}</p> : null}
-        {skills.isError ? <p className="mb-2 text-sm text-[var(--link)]">Falha ao carregar as skills.</p> : null}
+        {notice ? <p className="mb-3 text-sm text-[var(--success)]">{notice}</p> : null}
+        {skills.isError ? <p className="mb-2 text-sm text-[var(--danger)]">Falha ao carregar as skills.</p> : null}
         {skills.isLoading ? <p className="py-4 text-sm text-[var(--text-muted)]">Carregando skills…</p> : null}
         <ul className="divide-y divide-[var(--border)] text-sm">
           {skills.data?.skills.map((skill) => (

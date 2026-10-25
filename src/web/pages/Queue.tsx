@@ -98,7 +98,7 @@ export function Queue() {
       <ErrorText>{error}</ErrorText>
       <Card title="Fila">
         {queue.isError ? (
-          <p className="text-sm text-[var(--link)]">Falha ao carregar a fila.</p>
+          <p className="text-sm text-[var(--danger)]">Falha ao carregar a fila.</p>
         ) : (
           <div className="flex flex-wrap items-center gap-4">
             <p className="text-sm text-[var(--text-muted)]">
@@ -149,7 +149,7 @@ export function Queue() {
         </form>
       </Card>
       <Card title="Jobs">
-        {jobs.isError ? <p className="text-sm text-[var(--link)]">Falha ao carregar os jobs.</p> : null}
+        {jobs.isError ? <p className="text-sm text-[var(--danger)]">Falha ao carregar os jobs.</p> : null}
         {jobs.isLoading ? (
           <p className="text-sm text-[var(--text-muted)]">Carregando…</p>
         ) : jobs.data && jobs.data.jobs.length === 0 ? (

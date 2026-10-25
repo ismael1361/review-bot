@@ -29,7 +29,7 @@ export function SystemSettings() {
   if (!form) {
     return (
       <Card title="Sistema">
-        <p className={`text-sm ${settings.isError ? 'text-[var(--link)]' : 'text-[var(--text-muted)]'}`}>
+        <p className={`text-sm ${settings.isError ? 'text-[var(--danger)]' : 'text-[var(--text-muted)]'}`}>
           {settings.isError ? 'Falha ao carregar as configurações.' : 'Carregando…'}
         </p>
       </Card>

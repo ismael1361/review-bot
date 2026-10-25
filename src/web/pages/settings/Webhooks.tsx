@@ -34,7 +34,7 @@ function Deliveries({ webhookId }: { webhookId: string }) {
     return <p className="mt-2 text-xs text-[var(--text-muted)]">Carregando entregas…</p>;
   }
   if (deliveries.isError) {
-    return <p className="mt-2 text-xs text-[var(--link)]">Falha ao carregar as entregas.</p>;
+    return <p className="mt-2 text-xs text-[var(--danger)]">Falha ao carregar as entregas.</p>;
   }
 
   const rows = deliveries.data?.deliveries ?? [];
@@ -50,7 +50,7 @@ function Deliveries({ webhookId }: { webhookId: string }) {
       {rows.map((delivery) => (
         <li key={delivery.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-[var(--text-muted)]">
           <span className="font-medium text-[var(--text)]">{delivery.event}</span>
-          <span className={delivery.success ? 'text-[var(--tertiary-hover)]' : 'text-[var(--link)]'}>{delivery.success ? 'sucesso' : 'falha'}</span>
+          <span className={delivery.success ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>{delivery.success ? 'sucesso' : 'falha'}</span>
           <span>status {delivery.statusCode ?? '—'}</span>
           <span>tentativa {delivery.attempt}</span>
           <span className="text-[var(--text-muted)]">{new Date(delivery.createdAt).toLocaleString('pt-BR')}</span>
@@ -190,13 +190,13 @@ export function Webhooks() {
     <div className="space-y-4">
       <Card title="Webhooks">
         <ErrorText>{error}</ErrorText>
-        {notice ? <p className="mb-3 text-sm text-[var(--tertiary-hover)]">{notice}</p> : null}
+        {notice ? <p className="mb-3 text-sm text-[var(--success)]">{notice}</p> : null}
         {secret ? (
-          <p className="mb-3 rounded-lg border border-[var(--secondary)] bg-[var(--sunken)] px-3 py-2 text-sm text-[var(--secondary-hover)]">
+          <p className="mb-3 rounded-lg border border-[var(--secondary)] bg-[var(--sunken)] px-3 py-2 text-sm text-[var(--secondary)]">
             Secret gerado (exibido uma única vez): <code className="font-mono text-xs">{secret}</code>
           </p>
         ) : null}
-        {webhooks.isError ? <p className="mb-2 text-sm text-[var(--link)]">Falha ao carregar os webhooks.</p> : null}
+        {webhooks.isError ? <p className="mb-2 text-sm text-[var(--danger)]">Falha ao carregar os webhooks.</p> : null}
         <ul className="divide-y divide-[var(--border)] text-sm">
           {webhooks.data?.webhooks.map((webhook) => (
             <li key={webhook.id} className="py-3">
@@ -230,7 +230,7 @@ export function Webhooks() {
           ))}
           {webhooks.data && webhooks.data.webhooks.length === 0 ? <li className="py-4 text-[var(--text-muted)]">Nenhum webhook ainda.</li> : null}
         </ul>
-        {testMessage ? <p className={`mt-2 text-sm ${testOk ? 'text-[var(--tertiary-hover)]' : 'text-[var(--link)]'}`}>{testMessage}</p> : null}
+        {testMessage ? <p className={`mt-2 text-sm ${testOk ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>{testMessage}</p> : null}
       </Card>
       <Card title={editingId ? 'Editar webhook' : 'Novo webhook'}>
         <Field label="URL">

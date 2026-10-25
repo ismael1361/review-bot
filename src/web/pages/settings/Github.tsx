@@ -25,7 +25,7 @@ export function GithubSettings() {
   return (
     <Card title="Conta GitHub">
       {current.isError ? (
-        <p className="mb-3 text-sm text-[var(--link)]">Falha ao carregar a credencial.</p>
+        <p className="mb-3 text-sm text-[var(--danger)]">Falha ao carregar a credencial.</p>
       ) : (
         <p className="mb-3 text-sm text-[var(--text-muted)]">
           {current.data?.credentials
@@ -34,7 +34,7 @@ export function GithubSettings() {
         </p>
       )}
       <ErrorText>{error}</ErrorText>
-      {message ? <p className="mb-3 text-sm text-[var(--tertiary-hover)]">{message}</p> : null}
+      {message ? <p className="mb-3 text-sm text-[var(--success)]">{message}</p> : null}
       <Field label="Personal Access Token">
         <Input type="password" value={pat} onChange={(event) => setPat(event.target.value)} placeholder="ghp_..." />
       </Field>

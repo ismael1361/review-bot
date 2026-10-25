@@ -28,7 +28,7 @@ export function Dashboard() {
         <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)]">Dashboard</h1>
         <p className="mt-1 text-sm text-[var(--text-muted)]">Fila, execuções e consumo</p>
       </div>
-      {dashboard.isError ? <p className="text-sm text-[var(--link)]">Falha ao carregar o dashboard.</p> : null}
+      {dashboard.isError ? <p className="text-sm text-[var(--danger)]">Falha ao carregar o dashboard.</p> : null}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card title="Na fila">
           <p className="text-2xl font-semibold text-[var(--text)]">{data?.queue.queued ?? '—'}</p>
