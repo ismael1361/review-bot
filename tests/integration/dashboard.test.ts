@@ -9,7 +9,7 @@ describe('dashboard e fila', () => {
     const { app, deps } = await createTestApp();
     const cookie = await setupRootAndLogin(app, deps);
     const dashboard = await app.inject({ method: 'GET', url: '/api/dashboard', headers: { cookie } });
-    expect(dashboard.json()).toEqual({ queue: { queued: 0, running: 0 }, reviews: { total: 0, last24h: 0 }, failures: 0 });
+    expect(dashboard.json()).toEqual({ queue: { queued: 0, running: 0 }, reviews: { total: 0, last24h: 0, last7d: 0 }, failures: 0, tokens: { input: 0, output: 0 } });
 
     const pause = await app.inject({ method: 'POST', url: '/api/queue/pause', headers: { cookie } });
     expect(pause.json().paused).toBe(true);

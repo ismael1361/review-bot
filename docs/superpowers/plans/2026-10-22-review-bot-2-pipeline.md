@@ -2708,7 +2708,7 @@ Expected: todos verdes.
 - Consumes: `jobs.usageJson`, `reviews.postedAt`, `createWorker`, `createEventBus`.
 - Produces: dashboard com `tokens: { input, output }` e `reviews: { total, last24h, last7d }`; eventos `job.started`, `job.progress`, `job.finished` publicados no bus (já garantidos pelas Tasks 7-9).
 
-- [ ] **Step 1: Atualizar `src/api/routes/dashboard.ts`**
+- [x] **Step 1: Atualizar `src/api/routes/dashboard.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
@@ -2744,7 +2744,7 @@ export function registerDashboardRoutes(app: FastifyInstance, deps: AppDeps): vo
 }
 ```
 
-- [ ] **Step 2: Escrever `tests/integration/dashboard-live.test.ts`**
+- [x] **Step 2: Escrever `tests/integration/dashboard-live.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -2776,12 +2776,12 @@ describe('dashboard e eventos de job', () => {
 });
 ```
 
-- [ ] **Step 3: Rodar e verificar**
+- [x] **Step 3: Rodar e verificar**
 
 Run: `yarn test tests/integration/dashboard-live.test.ts`
 Expected: PASS.
 
-- [ ] **Step 4: Checkpoint**
+- [x] **Step 4: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes.
