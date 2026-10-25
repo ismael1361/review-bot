@@ -276,7 +276,7 @@ Expected: todos verdes.
 - Consumes: `better-sqlite3`, `@node-rs/argon2`, env `DATA_DIR`.
 - Produces: `node scripts/backup.mjs` (copia consistente para `data/backups/review-bot-<timestamp>.db`); `node scripts/reset-password.mjs <username>` (lê a nova senha do stdin).
 
-- [ ] **Step 1: Implementar `scripts/backup.mjs`**
+- [x] **Step 1: Implementar `scripts/backup.mjs`**
 
 ```js
 import Database from 'better-sqlite3';
@@ -295,7 +295,7 @@ db.close();
 console.log(target);
 ```
 
-- [ ] **Step 2: Implementar `scripts/reset-password.mjs`**
+- [x] **Step 2: Implementar `scripts/reset-password.mjs`**
 
 ```js
 import Database from 'better-sqlite3';
@@ -328,7 +328,7 @@ db.close();
 console.log('Senha redefinida e sessões revogadas.');
 ```
 
-- [ ] **Step 3: Escrever `tests/integration/scripts.test.ts`**
+- [x] **Step 3: Escrever `tests/integration/scripts.test.ts`**
 
 ```ts
 import { execFileSync } from 'node:child_process';
@@ -376,12 +376,12 @@ describe('scripts operacionais', () => {
 });
 ```
 
-- [ ] **Step 4: Rodar e verificar**
+- [x] **Step 4: Rodar e verificar**
 
 Run: `yarn test tests/integration/scripts.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Checkpoint**
+- [x] **Step 5: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes.
@@ -398,7 +398,7 @@ Expected: todos verdes.
 - Consumes: `Db`, `sql` do drizzle, `isQueuePaused`.
 - Produces: `GET /healthz` → `{ status: 'ok', db: true }` ou 503; `GET /readyz` → `{ status: 'ok', paused, uptimeSec }` ou 503.
 
-- [ ] **Step 1: Atualizar `src/api/routes/health.ts`**
+- [x] **Step 1: Atualizar `src/api/routes/health.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
@@ -429,7 +429,7 @@ export function registerHealthRoutes(app: FastifyInstance, deps: AppDeps): void 
 
 Ajustar a assinatura em `buildApp` (já recebe `deps`).
 
-- [ ] **Step 2: Shutdown com recuperação de órfãos**
+- [x] **Step 2: Shutdown com recuperação de órfãos**
 
 No `src/server.ts`, antes de `app.close()`:
 
@@ -440,7 +440,7 @@ No `src/server.ts`, antes de `app.close()`:
 
 E registrar um handler para `uncaughtException`/`unhandledRejection` que loga e encerra o processo (o restart do Docker recupera os jobs).
 
-- [ ] **Step 3: Escrever `tests/integration/health-ready.test.ts`**
+- [x] **Step 3: Escrever `tests/integration/health-ready.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -459,12 +459,12 @@ describe('saúde', () => {
 });
 ```
 
-- [ ] **Step 4: Rodar e verificar**
+- [x] **Step 4: Rodar e verificar**
 
 Run: `yarn test tests/integration/health-ready.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Checkpoint**
+- [x] **Step 5: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes.

@@ -139,15 +139,36 @@ async function main(): Promise<void> {
   const runtime = startRuntime({ db, config, logger, encryptionKey, bus });
   logger.info({ port: config.PORT }, "review-bot iniciado");
 
-  const shutdown = async (signal: string) => {
-    logger.info({ signal }, "encerrando");
-    runtime.stop();
+  let shuttingDown = false;
+  const shutdown = async (reason: string, exitCode: number) => {
+    if (shuttingDown) {
+      return;
+    }
+    shuttingDown = true;
+    logger.info({ reason }, "encerrando");
+    try {
+      runtime.stop();
+    } catch (error) {
+      logger.error({ err: error }, "falha ao parar o runtime");
+    }
     clearInterval(purgeTimer);
-    await app.close();
-    process.exit(0);
+    try {
+      await app.close();
+    } catch (error) {
+      logger.error({ err: error }, "falha ao fechar a aplicação");
+    }
+    process.exit(exitCode);
   };
-  process.on("SIGTERM", () => void shutdown("SIGTERM"));
-  process.on("SIGINT", () => void shutdown("SIGINT"));
+  process.on("SIGTERM", () => void shutdown("SIGTERM", 0));
+  process.on("SIGINT", () => void shutdown("SIGINT", 0));
+  process.on("uncaughtException", (error) => {
+    logger.error({ err: error }, "exceção não tratada, encerrando");
+    void shutdown("uncaughtException", 1);
+  });
+  process.on("unhandledRejection", (reason) => {
+    logger.error({ err: reason }, "promessa rejeitada sem tratamento, encerrando");
+    void shutdown("unhandledRejection", 1);
+  });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
