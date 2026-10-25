@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { getSetting, setSetting } from '../../src/db/settings';
 import { createTestApp } from '../helpers/app';
 import { setupRootAndLogin } from '../helpers/auth';
 
@@ -56,6 +57,19 @@ describe('credencial GitHub', () => {
     const save = await app.inject({ method: 'PUT', url: '/api/settings/github', headers: { cookie }, payload: { pat: 'ghp_1234567890abcdefghij' } });
     expect(save.statusCode).toBe(502);
     expect(save.json().error.code).toBe('github_unavailable');
+    await app.close();
+  });
+
+  it('retoma o poller ao salvar uma nova credencial', async () => {
+    vi.stubGlobal('fetch', fakeGithub('octocat'));
+    const { app, deps } = await createTestApp();
+    const cookie = await setupRootAndLogin(app, deps);
+    setSetting(deps.db, 'poller_paused', true);
+    setSetting(deps.db, 'poll_auth_failures', 3);
+    const save = await app.inject({ method: 'PUT', url: '/api/settings/github', headers: { cookie }, payload: { pat: 'ghp_1234567890abcdefghij' } });
+    expect(save.statusCode).toBe(200);
+    expect(getSetting<boolean>(deps.db, 'poller_paused')).toBe(false);
+    expect(getSetting<number>(deps.db, 'poll_auth_failures')).toBe(0);
     await app.close();
   });
 

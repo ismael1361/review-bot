@@ -3269,7 +3269,7 @@ Expected: todos verdes.
 - Consumes: `pollOnce`, `createWorker`, `executeJob`, `createProfile`, `activateProfile`, `saveGithubCredentials`.
 - Produces: `createFakeGithub()` → `{ fetchImpl, state }` com estado mutável (`headSha`, `updatedAt`) e `posts` registrando reviews criadas; `createScriptedChat(results)`.
 
-- [ ] **Step 1: Implementar os helpers**
+- [x] **Step 1: Implementar os helpers**
 
 `tests/helpers/fake-github.ts`:
 
@@ -3351,7 +3351,7 @@ export function toolCall(name: string, args: unknown): ChatResult {
 }
 ```
 
-- [ ] **Step 2: Escrever `tests/integration/pipeline.test.ts`**
+- [x] **Step 2: Escrever `tests/integration/pipeline.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -3414,12 +3414,12 @@ describe('pipeline ponta a ponta', () => {
 
 Nota: `WorkerDeps` precisa do campo opcional `chatImpl` (adicionado na Task 9) e `executeJob` deve repassá-lo a `runAgentLoop`. O `createWorker` também repassa o mesmo `deps` ao handler.
 
-- [ ] **Step 3: Rodar e verificar**
+- [x] **Step 3: Rodar e verificar**
 
 Run: `yarn test tests/integration/pipeline.test.ts`
 Expected: PASS.
 
-- [ ] **Step 4: Checkpoint**
+- [x] **Step 4: Checkpoint**
 
 Run: `yarn typecheck; yarn lint; yarn test`
 Expected: todos verdes.
@@ -3431,12 +3431,14 @@ Expected: todos verdes.
 **Files:**
 - Nenhum arquivo novo.
 
-- [ ] **Step 1: Rodar a suíte completa**
+- [x] **Step 1: Rodar a suíte completa**
 
 Run: `yarn typecheck; yarn lint; yarn test; yarn build`
 Expected: typecheck e lint limpos, todos os testes PASS, build concluído.
 
-- [ ] **Step 2: Conferir a cobertura do spec**
+Verificação final em 2026-10-25: typecheck/lint limpos, **55 arquivos / 348 testes**, `bun run build` concluído (web + servidor).
+
+- [x] **Step 2: Conferir a cobertura do spec**
 
 | Requisito | Onde |
 |---|---|
@@ -3450,20 +3452,22 @@ Expected: typecheck e lint limpos, todos os testes PASS, build concluído.
 | RF-13 publicação automática | Task 8 |
 | RF-14 idempotência por marcador | Task 8 |
 | RF-15 retries com backoff | Tasks 3, 9 |
-| RF-16 dashboard ao vivo | Tasks 11, 12 |
-| RF-17 histórico e detalhe | Tasks 10, 12 |
+| RF-16 dashboard ao vivo | Tasks 11, 12 (núcleo; paridade completa do spec §11 no Plano 3 Task 8) |
+| RF-17 histórico e detalhe | Tasks 10, 12 (núcleo; filtros/perfil/timeline completos no Plano 3 Task 8) |
 | RF-23 idioma | Task 7 (prompt) |
 | RF-25 redação de segredos | Tasks 5, 6 |
 | Painel escuro com body, diff e Markdown | Task 12 |
 
 Fora deste plano (Plano 3): retenção, backup, scripts de reset, E2E Playwright, testes de segurança adicionais, documentação de deploy e checklist final de aceite.
 
-- [ ] **Step 3: Revisar pendências conhecidas**
+- [x] **Step 3: Revisar pendências conhecidas**
 
-- `executeJob` assume `repo.fullName` como head repo; PRs de fork precisam usar `pull.head.repo.full_name` (guardado em `pr_seen`/`jobs`? não). Ajustar na Task 9 se um teste de fork for adicionado no Plano 3; registrar como pendência conhecida.
-- `dispatchEvent` usa `allowPrivate: false` fixo; o Plano 3 deve ler `ALLOW_PRIVATE_URLS` da config.
-- A retenção de `github_cache` e a limpeza de transcrições ficam para o Plano 3.
-- O painel não tem paginação além de 20 itens; aceitável na v1.
+- Fork: `executeJob` já usa `pull.head.repo.full_name` para leituras/ferramentas e o repo base para publicação (Task 9); persistir `headRepo` em `jobs`/`pr_seen` fica no Plano 3 Task 1.
+- `dispatchEvent` já recebe `allowPrivate` de `WorkerDeps` e o runtime passa `ALLOW_PRIVATE_URLS` (Task 9).
+- A retenção de `github_cache`/transcrições, backup, reset e E2E Playwright ficam no Plano 3.
+- O painel mantém paginação simples de 20 itens na v1; paridade completa do spec §11 (execução atual, reviews recentes, filtros, perfil/timeline) fica no Plano 3 Task 8.
+- Revisão final corrigiu: pausa por auth + retomada ao salvar credencial, recuperação imediata de órfãos/shutdown, intervalo de polling dinâmico, guarda de claim contra cancel+retry, retry publish-only e semântica do marcador.
+- Pendências menores residuais registradas no ledger (usage apagado em falha terminal, scheduler não reprograma se settings falhar, artefatos de loop cancelado podem ser publicados no retry) ficam para o Plano 3.
 
 
 

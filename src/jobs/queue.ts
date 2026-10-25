@@ -16,6 +16,18 @@ export class RetryableJobError extends Error {
   }
 }
 
+export class StaleClaimError extends Error {}
+
+export function assertJobClaimCurrent(db: Db, job: JobRow): void {
+  if (job.status !== 'running' || !job.lockedBy) {
+    return;
+  }
+  const current = db.select({ status: jobs.status, lockedBy: jobs.lockedBy }).from(jobs).where(eq(jobs.id, job.id)).get();
+  if (!current || current.status !== 'running' || current.lockedBy !== job.lockedBy) {
+    throw new StaleClaimError('Execução substituída; publicação ignorada');
+  }
+}
+
 export function claimNextJob(db: Db, workerId: string, now = Date.now()): JobRow | undefined {
   if (isQueuePaused(db)) {
     return undefined;

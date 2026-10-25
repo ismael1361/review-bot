@@ -252,8 +252,8 @@ describe('poller', () => {
     expect(result).toEqual({ found: 0, enqueued: 0, skipped: 0 });
     const warning = deps.db.select().from(events).where(and(eq(events.type, 'poll.updated'), eq(events.level, 'warn'))).get();
     expect(warning?.message).toContain('Falha temporária');
-    expect(getSetting<number>(deps.db, 'poll_auth_failures')).toBeUndefined();
-    expect(getSetting<boolean>(deps.db, 'poller_paused')).toBeUndefined();
+    expect(getSetting<number>(deps.db, 'poll_auth_failures')).toBe(0);
+    expect(getSetting<boolean>(deps.db, 'poller_paused')).toBe(false);
   });
 
   it('dispara webhook poller.paused após três falhas de autenticação', async () => {
@@ -291,7 +291,7 @@ describe('poller', () => {
     const { fetchImpl } = fakeFetch(githubRoutes());
     await pollOnce(pollerDeps(deps, fetchImpl));
     expect(getSetting<number>(deps.db, 'poll_auth_failures')).toBe(0);
-    expect(getSetting<boolean>(deps.db, 'poller_paused')).toBeUndefined();
+    expect(getSetting<boolean>(deps.db, 'poller_paused')).toBe(false);
   });
 
   it('registra aviso e não lança em erro temporário no search', async () => {
@@ -303,7 +303,7 @@ describe('poller', () => {
     const warning = deps.db.select().from(events).where(and(eq(events.type, 'poll.updated'), eq(events.level, 'warn'))).get();
     expect(warning?.message).toContain('Falha temporária');
     expect(deps.db.select().from(jobs).all()).toHaveLength(0);
-    expect(getSetting<number>(deps.db, 'poll_auth_failures')).toBeUndefined();
+    expect(getSetting<number>(deps.db, 'poll_auth_failures')).toBe(0);
   });
 
   it('conta como ignorado quando o repositório responde 404', async () => {

@@ -238,10 +238,33 @@ export async function publishReview(deps: PublishDeps, job: PublishJob, summary:
 
   const already = existing.find((review) => review.body?.includes(marker));
   if (already) {
+    const reviewId = String(already.id);
+    const local = db.select().from(reviews).where(eq(reviews.jobId, job.id)).get();
+    if (local && local.githubReviewId === reviewId) {
+      const recordedPosted = publishable.filter((finding) => finding.status === 'posted');
+      const recordedFallback = publishable.filter((finding) => finding.status === 'fallback');
+      markFindings(db, recordedPosted, recordedFallback, local.id);
+      db.update(reviews)
+        .set({
+          url: already.html_url,
+          body: already.body ?? local.body,
+          status: 'posted',
+          postedAt: (deps.now ?? Date.now)(),
+        })
+        .where(eq(reviews.id, local.id))
+        .run();
+      return {
+        status: 'posted',
+        reviewId,
+        url: already.html_url,
+        commentsPosted: local.commentsPosted,
+        commentsFallback: local.commentsFallback,
+      };
+    }
     const commentsPosted = inline.length;
     const commentsFallback = fallback.length;
     const reviewRowId = saveReviewRow(db, job.id, {
-      githubReviewId: String(already.id),
+      githubReviewId: reviewId,
       url: already.html_url,
       body: already.body ?? intendedBody,
       commentsPosted,
@@ -250,7 +273,7 @@ export async function publishReview(deps: PublishDeps, job: PublishJob, summary:
       postedAt: (deps.now ?? Date.now)(),
     });
     markFindings(db, inline, fallback, reviewRowId);
-    return { status: 'posted', reviewId: String(already.id), url: already.html_url, commentsPosted, commentsFallback };
+    return { status: 'posted', reviewId, url: already.html_url, commentsPosted, commentsFallback };
   }
 
   const comments = buildComments(inline);

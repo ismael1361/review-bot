@@ -1,5 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { loadConfig } from "./config";
 import { createLogger } from "./logger";
 import { createDb } from "./db/client";
@@ -11,7 +12,7 @@ import { createEventBus } from "./events/bus";
 import { buildApp, type AppDeps } from "./api/app";
 import { getSystemSettings } from "./api/routes/settings-system";
 import { GitHubError } from "./github/client";
-import { clearPollAuthFailures, pollOnce, recordPollAuthFailure } from "./github/poller";
+import { pollOnce, recordPollAuthFailure } from "./github/poller";
 import { createWorker } from "./jobs/worker";
 import { executeJob } from "./jobs/execute";
 import { recoverOrphans } from "./jobs/queue";
@@ -30,7 +31,7 @@ export function startRuntime(deps: RuntimeDeps): { stop: () => void } {
     handler: executeJob,
     allowPrivate: deps.config.ALLOW_PRIVATE_URLS,
   };
-  recoverOrphans(deps.db);
+  recoverOrphans(deps.db, 0);
   const workers = Array.from({ length: settings.concurrency }, (_, index) => {
     const worker = createWorker(workerDeps, `w${index + 1}`);
     worker.start();
@@ -38,8 +39,11 @@ export function startRuntime(deps: RuntimeDeps): { stop: () => void } {
   });
 
   let polling = false;
+  let stopped = false;
+  let pollTimer: ReturnType<typeof setTimeout> | undefined;
+
   const poll = async (): Promise<void> => {
-    if (polling) {
+    if (polling || stopped) {
       return;
     }
     polling = true;
@@ -52,17 +56,20 @@ export function startRuntime(deps: RuntimeDeps): { stop: () => void } {
         allowPrivate: deps.config.ALLOW_PRIVATE_URLS,
         fetchImpl: deps.fetchImpl,
       });
-      clearPollAuthFailures(deps.db);
     } catch (error) {
       if (error instanceof GitHubError && (error.status === 401 || error.status === 403) && !error.retryable) {
-        await recordPollAuthFailure({
-          db: deps.db,
-          bus: deps.bus,
-          logger: deps.logger,
-          encryptionKey: deps.encryptionKey,
-          allowPrivate: deps.config.ALLOW_PRIVATE_URLS,
-          fetchImpl: deps.fetchImpl,
-        });
+        try {
+          await recordPollAuthFailure({
+            db: deps.db,
+            bus: deps.bus,
+            logger: deps.logger,
+            encryptionKey: deps.encryptionKey,
+            allowPrivate: deps.config.ALLOW_PRIVATE_URLS,
+            fetchImpl: deps.fetchImpl,
+          });
+        } catch (failure) {
+          deps.logger.warn({ err: failure }, "falha ao registrar falha de autenticação no polling");
+        }
       } else {
         deps.logger.warn({ err: error }, "falha no polling");
       }
@@ -71,13 +78,34 @@ export function startRuntime(deps: RuntimeDeps): { stop: () => void } {
     }
   };
 
-  const pollTimer = setInterval(() => void poll(), settings.pollingIntervalSec * 1000);
+  const scheduleNextPoll = (): void => {
+    if (stopped) {
+      return;
+    }
+    try {
+      const intervalSec = getSystemSettings(deps.db).pollingIntervalSec;
+      pollTimer = setTimeout(() => {
+        void poll()
+          .catch((error) => deps.logger.warn({ err: error }, "falha no ciclo de polling"))
+          .finally(scheduleNextPoll);
+      }, intervalSec * 1000);
+      pollTimer.unref?.();
+    } catch (error) {
+      deps.logger.warn({ err: error }, "falha ao agendar o próximo polling");
+    }
+  };
+  scheduleNextPoll();
+
   return {
     stop() {
-      clearInterval(pollTimer);
+      stopped = true;
+      if (pollTimer) {
+        clearTimeout(pollTimer);
+      }
       for (const worker of workers) {
         worker.stop();
       }
+      recoverOrphans(deps.db, 0);
     },
   };
 }
@@ -110,4 +138,6 @@ async function main(): Promise<void> {
   process.on("SIGINT", () => void shutdown("SIGINT"));
 }
 
-void main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  void main();
+}

@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { describe, expect, it, vi } from 'vitest';
 import { jobs, repositories, reviewFindings, reviews } from '../../src/db/schema';
@@ -256,6 +257,73 @@ describe('publisher', () => {
     expect(findings.get('Intervalo')).toMatchObject({ status: 'posted', reviewId: reviewRow.id });
     expect(findings.get('Legado')).toMatchObject({ status: 'posted', reviewId: reviewRow.id });
     expect(findings.get('Fora')).toMatchObject({ status: 'fallback', reviewId: reviewRow.id });
+  });
+
+  it('marcador com linha local mantém achado novo como valid e usa as contagens locais', async () => {
+    const { db, job } = seed();
+    const remoteBody = `${MARKER}\n\nResumo antigo`;
+    db.insert(reviews)
+      .values({
+        id: 'local-5',
+        jobId: 'j1',
+        githubReviewId: '5',
+        url: 'https://github.com/a/b/pull/7#pullrequestreview-5',
+        body: remoteBody,
+        event: 'COMMENT',
+        commentsPosted: 2,
+        commentsFallback: 1,
+        status: 'posted',
+        postedAt: 1000,
+      })
+      .run();
+    const findings = byTitle(db);
+    db.update(reviewFindings).set({ status: 'posted', reviewId: 'local-5' }).where(eq(reviewFindings.id, findings.get('Bug')!.id)).run();
+    db.update(reviewFindings).set({ status: 'fallback', reviewId: 'local-5' }).where(eq(reviewFindings.id, findings.get('Fora')!.id)).run();
+    db.insert(reviewFindings)
+      .values({
+        id: uuidv7(),
+        jobId: 'j1',
+        path: 'src/e.ts',
+        startLine: 12,
+        endLine: 12,
+        side: 'RIGHT',
+        severity: 'critical',
+        title: 'Novo',
+        bodyMd: 'corpo novo',
+        status: 'valid',
+        createdAt: NOW,
+      })
+      .run();
+    const { fn, fetchImpl } = mockFetch((_url, init) => {
+      if (init?.method === 'POST') {
+        throw new Error('POST inesperado');
+      }
+      return jsonResponse([{ id: 5, body: remoteBody, html_url: 'https://github.com/a/b/pull/7#pullrequestreview-5' }]);
+    });
+
+    const result = await publishReview({ db, token: 't', fetchImpl, now: () => 2000 }, job, 'Resumo novo.');
+
+    expect(result).toEqual({
+      status: 'posted',
+      reviewId: '5',
+      url: 'https://github.com/a/b/pull/7#pullrequestreview-5',
+      commentsPosted: 2,
+      commentsFallback: 1,
+    });
+    expect(fn.mock.calls.every(([, init]) => init?.method !== 'POST')).toBe(true);
+    const after = byTitle(db);
+    expect(after.get('Novo')).toMatchObject({ status: 'valid', reviewId: null });
+    expect(after.get('Intervalo')).toMatchObject({ status: 'valid', reviewId: null });
+    expect(after.get('Legado')).toMatchObject({ status: 'valid', reviewId: null });
+    expect(after.get('Bug')).toMatchObject({ status: 'posted', reviewId: 'local-5' });
+    expect(after.get('Fora')).toMatchObject({ status: 'fallback', reviewId: 'local-5' });
+    expect(db.select().from(reviews).get()).toMatchObject({
+      id: 'local-5',
+      commentsPosted: 2,
+      commentsFallback: 1,
+      status: 'posted',
+      postedAt: 2000,
+    });
   });
 
   it('republicação após sucesso encontra o marcador e mantém as contagens reais', async () => {

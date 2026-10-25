@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Fechar as pendências de produção: PRs de fork, `ALLOW_PRIVATE_URLS` real, cancelamento cooperativo, retenção, backup, reset de senha, saúde, segurança testada, E2E Playwright, documentação de deploy e checklist de aceite.
+**Goal:** Fechar as pendências de produção: PRs de fork, `ALLOW_PRIVATE_URLS` real, cancelamento cooperativo, retenção, backup, reset de senha, saúde, segurança testada, E2E Playwright, dashboard operacional completo, conformidade visual com os mockups, documentação de deploy e checklist de aceite.
 
 **Architecture:** Sem novos componentes; ajustes no worker, no poller, no publicador e nos scripts operacionais. O container continua único; backup e reset rodam dentro do container pelo operador.
 
@@ -761,14 +761,109 @@ Expected: todos verdes.
 
 ---
 
-### Task 8: Verificação final do Plano 3
+### Task 8: Dashboard operacional e conformidade visual
+
+**Files:**
+- Modify: `src/api/routes/dashboard.ts`, `src/web/pages/Dashboard.tsx`, `src/web/components/ui.tsx`, `src/web/pages/Reviews.tsx`, `src/web/pages/Queue.tsx`, `src/web/pages/ReviewDetail.tsx`, `src/web/pages/settings/Github.tsx`, `src/web/pages/settings/Profiles.tsx`, `src/web/pages/settings/Skills.tsx`, `src/web/pages/Setup.tsx`, `src/web/pages/Login.tsx`, `src/api/routes/jobs-read.ts`, `src/api/routes/reviews.ts`
+- Create: `src/web/format.ts`
+- Test: `tests/integration/dashboard-live.test.ts`, `tests/web/dashboard.test.tsx`, `tests/web/reviews.test.tsx`, `tests/web/queue.test.tsx`, `tests/web/review-detail.test.tsx`
+
+**Interfaces:**
+- Consumes: `jobs`, `reviews`, `reviewFindings`, `repositories`, `events`, `webhookDeliveries`, `githubCredentials`, `aiProfiles`, `getSystemSettings`, `isQueuePaused`.
+- Produces: `GET /api/dashboard` com o payload abaixo; `GET /api/reviews` com `repoFullName`, `prNumber`, `prTitle`, contagens de severidade e filtros; `GET /api/reviews/:id` com `repository`, `events` (timeline) e `profile`; helpers `formatRelativeTime`, `formatDuration`, `formatTokens`, `formatPercent`; componentes `PageHeader`, `StatCard`, `StatusBadge` em `components/ui.tsx`.
+
+```ts
+export type DashboardData = {
+  queue: { queued: number; running: number; paused: boolean; concurrency: number };
+  reviews: { total: number; last24h: number; last7d: number };
+  failures: number;
+  failuresLast7d: number;
+  failureRate7d: number;
+  tokens: { input: number; output: number; last7dInput: number; last7dOutput: number };
+  avgDurationSec7d: number | null;
+  current: { id: string; prNumber: number; prTitle: string; prUrl: string; repoFullName: string; queuedAt: number; startedAt: number | null } | null;
+  liveQueue: Array<{ id: string; prNumber: number; prTitle: string; prUrl: string; repoFullName: string; status: 'queued' | 'running'; queuedAt: number; startedAt: number | null }>;
+  recentReviews: Array<{ id: string; jobId: string; prNumber: number; prTitle: string; repoFullName: string; status: string; commentsPosted: number; postedAt: number | null; critical: number; medium: number; suggestion: number }>;
+  findings: { critical: number; medium: number; suggestion: number; strength: number; total: number; topRepositories: Array<{ fullName: string; count: number }> };
+  trends: Array<{ date: string; reviews: number; failures: number; tokens: number }>;
+  health: { pollerPaused: boolean; queuePaused: boolean; pollAuthFailures: number; lastPollAt: number | null; webhookFailures24h: number };
+  onboarding: { githubConfigured: boolean; activeProfile: boolean; pollingEnabled: boolean };
+};
+```
+
+**Regras visuais:** manter a paleta opencode (`--bg`, `--surface`, `--border`, etc.) e usar `design/review-bot-mockups.figcraft` apenas como referência de estrutura, espaçamento, hierarquia, estados e componentes. Nenhuma dependência nova de gráficos; as tendências usam barras proporcionais em CSS.
+
+- [ ] **Step 1: Escrever os testes de integração do dashboard (RED)**
+
+Em `tests/integration/dashboard-live.test.ts`, cobrir:
+- fila com `paused` e `concurrency` (configuração do sistema);
+- `current` e `liveQueue` com `repoFullName`;
+- `recentReviews` com contagens `critical`, `medium`, `suggestion`;
+- `findings` por severidade e `topRepositories`;
+- `trends` com 7 posições, incluindo dias sem atividade;
+- `health` com `lastPollAt` vindo de `events` e `webhookFailures24h`;
+- `onboarding` refletindo credencial GitHub e perfil ativo;
+- `failureRate7d` e `avgDurationSec7d` calculados de `jobs.finishedAt`/`startedAt`.
+
+Run: `bun run test tests/integration/dashboard-live.test.ts`
+Expected: FAIL pelas novas propriedades ausentes.
+
+- [ ] **Step 2: Implementar o payload do dashboard (GREEN)**
+
+Em `src/api/routes/dashboard.ts`, fazer consultas agregadas com joins (`jobs`+`repositories`, `reviews`+`jobs`, `reviewFindings`+`jobs`+`repositories`) e montar o payload. Reutilizar `parseTokenUsage` para tokens totais e da janela de 7 dias. `lastPollAt` é o maior `events.createdAt` com `type = 'poll.updated'`. `pollingEnabled` é `githubConfigured && activeProfile`.
+
+Run: `bun run test tests/integration/dashboard-live.test.ts`
+Expected: PASS.
+
+- [ ] **Step 3: Criar helpers e primitivas de UI**
+
+Em `src/web/format.ts`, implementar `formatRelativeTime(epochMs, now?)`, `formatDuration(seconds)`, `formatTokens(value)` e `formatPercent(value)` (pt-BR, sem dependências). Em `src/web/components/ui.tsx`, adicionar:
+- `PageHeader({ title, subtitle, actions })`;
+- `StatCard({ label, value, hint, tone, href })`;
+- `StatusBadge({ status, kind })` para jobs/reviews (`Na fila`, `Em execução`, `Concluída`, `Parcial`, `Falhou`, `Cancelada`, `Fallback`).
+
+- [ ] **Step 4: Reconstruir o Dashboard**
+
+Estrutura obrigatória:
+1. `PageHeader` com botão **Atualizar** (`refetch`) e indicador de atualização.
+2. Quatro `StatCard`: Na fila (com concorrência), Em execução (PR atual), Reviews 24 h, Falhas (com falhas em 7 dias).
+3. Quatro cards secundários: Tokens 7 dias, Duração média 7 dias, Taxa de falha 7 dias, Achados por severidade.
+4. Grid principal: Execução atual; Fila ao vivo (até 6, link para `/queue`); Reviews recentes (5, link para `/reviews`); Saúde operacional; Consumo e tendências (7 barras CSS); Primeiros passos (somente admin e se `onboarding` tiver pendência).
+5. Estados de carregamento, erro e vazio em cada seção; responsivo (uma coluna no mobile).
+6. `useEvents` invalidando `['dashboard']`; nenhuma chamada nova no cliente além do endpoint do dashboard.
+
+- [ ] **Step 5: Conformidade das demais telas com os mockups**
+
+- **Reviews:** filtros de repositório, status, severidade e período; colunas PR/repo/status/achados/comentários/publicado; selos de status; botão **Atualizar**. Estender `GET /api/reviews` com join em `jobs`/`repositories` e contagem de severidade, mantendo paginação.
+- **Fila:** cards de fila/execução/concorrência; botões **Pausar/Retomar** e **Enfileirar PR** no topo; campo único aceitando URL ou `owner/repo#número`; tabela com PR/repo/status/tentativas/posição/ações; **Cancelar**, **Reprocessar** e **Nova execução** (forçar).
+- **Detalhe da review:** link **← Reviews**; cabeçalho com status, perfil/modelo, duração, tokens e comentários; corpo do review; achados agrupados por arquivo; coluna lateral com execução, perfil, chamadas GitHub, timeline (`events`) e transcrição.
+- **Definições GitHub:** banner de conexão com login, token mascarado e data de validação; checklist de permissões a partir de `scopes`.
+- **Definições IA/Skills:** manter comportamento; alinhar lista de perfis, ativação/teste/edição, skills ordenáveis e pré-prompt ao layout do mockup.
+- **Setup/Login:** ajustar largura, espaçamento e tipografia ao mockup, mantendo a paleta opencode.
+- **Onboarding:** o card **Primeiros passos** entra no dashboard; a tela dedicada permanece no Plano 4.
+
+- [ ] **Step 6: Testes web**
+
+Criar `tests/web/dashboard.test.tsx` cobrindo cards, fila ao vivo, reviews recentes, saúde, tendências e card de primeiros passos (admin). Atualizar `tests/web/reviews.test.tsx`, `tests/web/queue.test.tsx` e `tests/web/review-detail.test.tsx` para os novos rótulos/colunas, sem depender de snapshots frágeis.
+
+Run: `bun run test tests/web/dashboard.test.tsx tests/web/reviews.test.tsx tests/web/queue.test.tsx tests/web/review-detail.test.tsx`
+Expected: PASS.
+
+- [ ] **Step 7: Checkpoint**
+
+Run: `bun run typecheck; bun run lint; bun run test; bun run build`
+Expected: todos verdes.
+
+---
+
+### Task 9: Verificação final do Plano 3
 
 **Files:**
 - Nenhum arquivo novo.
 
 - [ ] **Step 1: Rodar tudo**
 
-Run: `yarn typecheck; yarn lint; yarn test; yarn build; yarn e2e`
+Run: `bun run typecheck; bun run lint; bun run test; bun run build; bun run e2e`
 Expected: tudo verde; build gera `dist/web` e `dist/server/server.js`.
 
 - [ ] **Step 2: Verificar o container**
@@ -785,6 +880,7 @@ Expected: imagem construída; healthcheck definido; volume `data` montado em `/d
 | RNF-05 robustez (shutdown/órfãos) | Task 4 |
 | RNF-01 segurança (testes) | Task 5 |
 | Fork e `ALLOW_PRIVATE_URLS` | Task 1 |
+| RF-16 dashboard operacional e UI/UX | Task 8 |
 | E2E e aceite | Tasks 6, 7 |
 | AC-01..AC-13 | `docs/operations.md` |
 

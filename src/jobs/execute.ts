@@ -6,14 +6,14 @@ import { runAgentLoop } from '../ai/loop';
 import { getProfileRow } from '../ai/profiles';
 import { buildUserPrompt } from '../ai/prompt';
 import type { PrFileEntry } from '../ai/tools';
-import { aiProfileSkills, events, repositories, skills } from '../db/schema';
+import { aiProfileSkills, events, jobs, repositories, skills } from '../db/schema';
 import { githubJson, paginate } from '../github/client';
 import { getGithubCredentials } from '../github/credentials';
 import { parseFilePatch, validRightLines, type DiffHunk } from '../github/diff';
 import { publishReview } from '../github/publisher';
 import { assertSafeUrl } from '../shared/url-guard';
 import { dispatchEvent, type WebhookEvent } from '../webhooks/dispatcher';
-import { RetryableJobError, heartbeat, isJobCancelled, type JobRow } from './queue';
+import { RetryableJobError, assertJobClaimCurrent, heartbeat, isJobCancelled, type JobRow } from './queue';
 import type { WorkerDeps } from './worker';
 
 const MAX_FILES = 300;
@@ -194,7 +194,62 @@ async function dispatchSafely(deps: WorkerDeps, event: WebhookEvent, payload: un
   }
 }
 
-export async function executeJob(job: JobRow, deps: WorkerDeps): Promise<{ status: 'succeeded' | 'partial'; usageJson: string }> {
+type ExecutionResult = { status: 'succeeded' | 'partial'; usageJson: string };
+
+function recordedExecution(raw: string | null): ExecutionResult {
+  const fallback = JSON.stringify({ status: 'partial' });
+  if (!raw) {
+    return { status: 'partial', usageJson: fallback };
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const record = parsed as Record<string, unknown>;
+      const status = record.status === 'succeeded' ? 'succeeded' : 'partial';
+      return { status, usageJson: JSON.stringify({ ...record, status }) };
+    }
+  } catch {
+    return { status: 'partial', usageJson: fallback };
+  }
+  return { status: 'partial', usageJson: fallback };
+}
+
+async function publishAndReport(
+  deps: WorkerDeps,
+  job: JobRow,
+  token: string,
+  repoFullName: string,
+  summary: string,
+  status: 'succeeded' | 'partial',
+  usageJson: string,
+): Promise<ExecutionResult> {
+  if (isJobCancelled(deps.db, job.id)) {
+    return { status, usageJson };
+  }
+  assertJobClaimCurrent(deps.db, job);
+  deps.db.update(jobs).set({ usageJson }).where(eq(jobs.id, job.id)).run();
+  const publish = await publishReview({ db: deps.db, token, fetchImpl: deps.fetchImpl }, job, summary);
+  if (publish.status === 'failed') {
+    if (publish.retryable) {
+      throw new RetryableJobError(publish.error ?? 'falha ao publicar review');
+    }
+    throw new Error(publish.error ?? 'falha ao publicar review');
+  }
+  deps.bus.publish({ type: 'review.published', data: { jobId: job.id, url: publish.url }, at: Date.now() });
+  await dispatchSafely(deps, 'review.published', {
+    jobId: job.id,
+    repo: repoFullName,
+    pr: job.prNumber,
+    url: publish.url,
+    commentsPosted: publish.commentsPosted,
+  });
+  if (status === 'partial') {
+    await dispatchSafely(deps, 'job.partial', { jobId: job.id, repo: repoFullName, pr: job.prNumber });
+  }
+  return { status, usageJson };
+}
+
+export async function executeJob(job: JobRow, deps: WorkerDeps): Promise<ExecutionResult> {
   const startedAt = Date.now();
   const heartbeatTimer = setInterval(() => {
     try {
@@ -213,6 +268,10 @@ export async function executeJob(job: JobRow, deps: WorkerDeps): Promise<{ statu
     const repo = deps.db.select().from(repositories).where(eq(repositories.id, job.repositoryId)).get();
     if (!repo) {
       throw new Error('Repositório não encontrado');
+    }
+    if (job.summaryMd && job.summaryMd.trim().length > 0) {
+      const recorded = recordedExecution(job.usageJson);
+      return await publishAndReport(deps, job, credentials.pat, repo.fullName, job.summaryMd, recorded.status, recorded.usageJson);
     }
     if (!job.profileId) {
       throw new Error('Job sem perfil de IA (crie e ative um perfil antes)');
@@ -332,33 +391,10 @@ export async function executeJob(job: JobRow, deps: WorkerDeps): Promise<{ statu
       turns: loop.turns,
       githubCalls: loop.githubCalls,
       durationMs: Date.now() - startedAt,
+      status: loop.status,
     });
 
-    if (isJobCancelled(deps.db, job.id)) {
-      return { status: loop.status, usageJson };
-    }
-
-    const publish = await publishReview({ db: deps.db, token, fetchImpl }, job, loop.summary);
-    if (publish.status === 'failed') {
-      if (publish.retryable) {
-        throw new RetryableJobError(publish.error ?? 'falha ao publicar review');
-      }
-      throw new Error(publish.error ?? 'falha ao publicar review');
-    }
-
-    deps.bus.publish({ type: 'review.published', data: { jobId: job.id, url: publish.url }, at: Date.now() });
-    await dispatchSafely(deps, 'review.published', {
-      jobId: job.id,
-      repo: repo.fullName,
-      pr: job.prNumber,
-      url: publish.url,
-      commentsPosted: publish.commentsPosted,
-    });
-    if (loop.status === 'partial') {
-      await dispatchSafely(deps, 'job.partial', { jobId: job.id, repo: repo.fullName, pr: job.prNumber });
-    }
-
-    return { status: loop.status, usageJson };
+    return await publishAndReport(deps, job, token, repo.fullName, loop.summary, loop.status, usageJson);
   } finally {
     clearInterval(heartbeatTimer);
   }

@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { githubCredentials } from '../db/schema';
 import { decryptSecret, encryptSecret } from '../auth/crypto';
+import { setSetting } from '../db/settings';
 
 export { testConnection } from './client';
 
@@ -30,6 +31,8 @@ export function saveGithubCredentials(db: Db, key: Buffer, input: { login: strin
     .values(values)
     .onConflictDoUpdate({ target: githubCredentials.id, set: { login: values.login, patEncrypted: values.patEncrypted, patLast4: values.patLast4, scopes: values.scopes, validatedAt: now, updatedAt: now } })
     .run();
+  setSetting(db, 'poller_paused', false);
+  setSetting(db, 'poll_auth_failures', 0);
 }
 
 export function toPublicGithubCredentials(db: Db, key: Buffer) {

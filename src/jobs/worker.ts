@@ -6,7 +6,16 @@ import { events } from '../db/schema';
 import type { EventBus } from '../events/bus';
 import { GitHubError } from '../github/client';
 import type { LookupFn } from '../shared/url-guard';
-import { RETRY_DELAYS_MS, RetryableJobError, claimNextJob, isJobCancelled, markJobFinished, scheduleRetry, type JobRow } from './queue';
+import {
+  RETRY_DELAYS_MS,
+  RetryableJobError,
+  StaleClaimError,
+  claimNextJob,
+  isJobCancelled,
+  markJobFinished,
+  scheduleRetry,
+  type JobRow,
+} from './queue';
 
 export type WorkerDeps = {
   db: Db;
@@ -54,7 +63,7 @@ export function createWorker(deps: WorkerDeps, workerId: string): { tick: () => 
       markJobFinished(deps.db, job.id, { status: result.status, usageJson: result.usageJson, now: clock(), workerId });
       emit(deps, job.id, 'job.finished', result.status === 'partial' ? 'Review parcial publicada' : 'Review publicada', { status: result.status });
     } catch (error) {
-      if (isJobCancelled(deps.db, job.id)) {
+      if (error instanceof StaleClaimError || isJobCancelled(deps.db, job.id)) {
         return true;
       }
       const retryable =

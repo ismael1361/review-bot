@@ -7,8 +7,8 @@ import type { AppDeps } from '../../src/api/app';
 import { events, jobs, repositories, reviews } from '../../src/db/schema';
 import { saveGithubCredentials } from '../../src/github/credentials';
 import { executeJob } from '../../src/jobs/execute';
-import { RetryableJobError, cancelJob } from '../../src/jobs/queue';
-import type { WorkerDeps } from '../../src/jobs/worker';
+import { RetryableJobError, cancelJob, retryJob } from '../../src/jobs/queue';
+import { createWorker, type WorkerDeps } from '../../src/jobs/worker';
 import { createTestApp } from '../helpers/app';
 
 const TOKEN = 'ghp_1234567890abcdefghij';
@@ -381,6 +381,67 @@ describe('executeJob', () => {
     expect(record.posts).toHaveLength(0);
     expect(deps.db.select().from(reviews).all()).toHaveLength(0);
     expect(deps.db.select().from(jobs).where(eq(jobs.id, job.id)).get()!.status).toBe('cancelled');
+  });
+
+  it('retry de publicação usa o resumo persistido sem chamar o chat novamente', async () => {
+    const { deps, job } = await setup();
+    const failedRecord: GithubRecord = { posts: [], urls: [] };
+    const failingFetch = githubFetch(failedRecord, { reviewPostStatus: 500 });
+    const firstScript = scripted([toolCall('submit_review', { summary: 'Resumo persistido para retry.' })]);
+
+    await expect(
+      executeJob(job, workerDeps(deps, failingFetch as unknown as typeof fetch, firstScript.chatImpl)),
+    ).rejects.toBeInstanceOf(RetryableJobError);
+
+    const afterFailure = deps.db.select().from(jobs).where(eq(jobs.id, job.id)).get()!;
+    expect(afterFailure.summaryMd).toBe('Resumo persistido para retry.');
+    expect(JSON.parse(afterFailure.usageJson!)).toMatchObject({ status: 'succeeded' });
+
+    const record: GithubRecord = { posts: [], urls: [] };
+    const retryFetch = githubFetch(record);
+    const chat = vi.fn(async () => {
+      throw new Error('não deveria chamar o chat');
+    });
+    const result = await executeJob(afterFailure, workerDeps(deps, retryFetch as unknown as typeof fetch, chat));
+
+    expect(result.status).toBe('succeeded');
+    expect(JSON.parse(result.usageJson)).toMatchObject({ status: 'succeeded' });
+    expect(record.posts).toHaveLength(1);
+    expect(chat).not.toHaveBeenCalled();
+    expect(deps.db.select().from(reviews).get()!.status).toBe('posted');
+  });
+
+  it('cancelar e reprocessar durante o loop não publica nem marca o job como falho', async () => {
+    const { deps, job } = await setup();
+    deps.db
+      .update(jobs)
+      .set({ status: 'queued', attempts: 0, lockedBy: null, nextAttemptAt: Date.now() })
+      .where(eq(jobs.id, job.id))
+      .run();
+    const record: GithubRecord = { posts: [], urls: [] };
+    const fetchMock = githubFetch(record);
+    const script = scripted([toolCall('submit_review', { summary: 'Resumo que não deve ser publicado.' })]);
+    const chatImpl = async (input: ChatInput): Promise<ChatResult> => {
+      cancelJob(deps.db, job.id);
+      retryJob(deps.db, job.id);
+      return script.chatImpl(input);
+    };
+
+    const worker = createWorker(workerDeps(deps, fetchMock as unknown as typeof fetch, chatImpl), 'w1');
+    expect(await worker.tick()).toBe(true);
+
+    expect(record.posts).toHaveLength(0);
+    const current = deps.db.select().from(jobs).where(eq(jobs.id, job.id)).get()!;
+    expect(current.status).toBe('queued');
+    expect(current.attempts).toBe(0);
+    const eventTypes = deps.db
+      .select()
+      .from(events)
+      .where(eq(events.jobId, job.id))
+      .all()
+      .map((event) => event.type);
+    expect(eventTypes).not.toContain('job.finished');
+    expect(eventTypes).not.toContain('job.failed');
   });
 
   it('trunca patches por bytes, prioriza código e registra evento de progresso', async () => {
