@@ -264,8 +264,8 @@ O volume antigo `<projeto>_data` é deixado intacto; remova-o manualmente com `d
 Cada tag `v*` dispara `.github/workflows/release.yml`, que constrói e publica a imagem multi-arquitetura (`linux/amd64` e `linux/arm64`) no GHCR e gera dois zips autocontidos:
 
 ```text
-ghcr.io/<owner>/review-bot:<tag>
-ghcr.io/<owner>/review-bot:latest
+ghcr.io/ismael1361/review-bot:<tag>
+ghcr.io/ismael1361/review-bot:latest
 ```
 
 A release anexa `review-bot-amd64.zip` e `review-bot-arm64.zip`. Cada zip contém a imagem (`review-bot-image.tar`), `docker-compose.yml` com a tag fixada, `.env.example`, `INSTALL.md`, `install.sh`, `install.ps1` e `SHA256SUMS`. O usuário final não usa git: baixa o zip da arquitetura correta, descompacta e roda o instalador.
@@ -274,7 +274,7 @@ Download e instalação (Linux/macOS, amd64):
 
 ```bash
 curl -fL -o review-bot-amd64.zip \
-  https://github.com/<owner>/review-bot/releases/latest/download/review-bot-amd64.zip
+  https://github.com/ismael1361/review-bot/releases/latest/download/review-bot-amd64.zip
 unzip review-bot-amd64.zip
 cd review-bot-amd64
 ./install.sh

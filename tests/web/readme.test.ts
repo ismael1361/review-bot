@@ -30,6 +30,11 @@ describe('README', () => {
     expect(headingLines).toContain(heading);
   });
 
+  it('usa o repositório real nos comandos de release', () => {
+    expect(readme).toContain('https://github.com/ismael1361/review-bot');
+    expect(readme).not.toContain('<owner>');
+  });
+
   it('ensina a instalar pelo zip da release sem git', () => {
     const quickStart = section('Instalação rápida (release, sem git)');
     expect(quickStart).toContain('releases/latest/download/review-bot-amd64.zip');

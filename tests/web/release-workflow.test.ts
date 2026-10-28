@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const workflow = readFileSync(join(process.cwd(), '.github', 'workflows', 'release.yml'), 'utf8');
 const assembler = readFileSync(join(process.cwd(), 'scripts', 'release', 'assemble-bundle.mjs'), 'utf8');
+const operations = readFileSync(join(process.cwd(), 'docs', 'operations.md'), 'utf8');
 
 describe('workflow de release', () => {
   it('publica a imagem multi-arch no GHCR e mantém o gate de testes', () => {
@@ -30,5 +31,10 @@ describe('workflow de release', () => {
   it('não orienta o usuário final a clonar o repositório', () => {
     expect(workflow).not.toContain('git clone');
     expect(workflow).not.toContain('git pull');
+  });
+
+  it('documenta o repositório real nos comandos de release', () => {
+    expect(operations).toContain('https://github.com/ismael1361/review-bot');
+    expect(operations).not.toContain('<owner>');
   });
 });

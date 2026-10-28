@@ -29,7 +29,7 @@ Baixe o zip da release, descompacte e rode o instalador. A imagem Docker já vai
 
 ```bash
 curl -fL -o review-bot-amd64.zip \
-  https://github.com/<owner>/review-bot/releases/latest/download/review-bot-amd64.zip
+  https://github.com/ismael1361/review-bot/releases/latest/download/review-bot-amd64.zip
 unzip review-bot-amd64.zip
 cd review-bot-amd64
 ./install.sh
@@ -38,7 +38,7 @@ cd review-bot-amd64
 **Windows PowerShell (amd64):**
 
 ```powershell
-Invoke-WebRequest -Uri https://github.com/<owner>/review-bot/releases/latest/download/review-bot-amd64.zip -OutFile review-bot-amd64.zip
+Invoke-WebRequest -Uri https://github.com/ismael1361/review-bot/releases/latest/download/review-bot-amd64.zip -OutFile review-bot-amd64.zip
 Expand-Archive review-bot-amd64.zip -DestinationPath .
 cd review-bot-amd64
 .\install.ps1
@@ -58,7 +58,7 @@ Os dados permanecem no volume `review-bot-data`; `docker compose down -v` també
 
 ### Instalação via GHCR (opcional)
 
-A mesma imagem é publicada como `ghcr.io/<owner>/review-bot:<tag>`, com `latest` e a versão da tag. Se preferir puxar do registry em vez de carregar o tar, use o `docker-compose.yml` de dentro do zip:
+A mesma imagem é publicada como `ghcr.io/ismael1361/review-bot:<tag>`, com `latest` e a versão da tag. Se preferir puxar do registry em vez de carregar o tar, use o `docker-compose.yml` de dentro do zip:
 
 ```bash
 docker compose -f docker-compose.yml up -d
