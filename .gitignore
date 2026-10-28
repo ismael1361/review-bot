@@ -2,6 +2,14 @@ node_modules/
 dist/
 data/
 .env
+.env.*
+!.env.example
+.encryption-key
+chave-encryption-key
+backups/
+*.db
+*.db-wal
+*.db-shm
 coverage/
 test-results/
 .superpowers/*

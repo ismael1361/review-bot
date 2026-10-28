@@ -38,6 +38,15 @@ describe('App setup gate', () => {
         setupDone = true;
         return new Response(JSON.stringify({ userId: '1' }), { status: 201 });
       }
+      if (url === '/api/settings/instance' && method === 'PUT') {
+        return new Response(
+          JSON.stringify({
+            settings: { publicUrl: 'http://localhost:7080', trustProxy: false, allowPrivateUrls: false },
+            restartRequired: false,
+          }),
+          { status: 200 },
+        );
+      }
       if (url === '/api/auth/me') {
         return new Response(JSON.stringify({ user: { id: '1', username: 'root', role: 'admin', isRoot: true } }), { status: 200 });
       }
@@ -67,10 +76,16 @@ describe('App setup gate', () => {
     vi.stubGlobal('fetch', fetchMock);
     renderApp();
     await userEvent.type(await screen.findByLabelText('Token de setup'), 'token-de-setup-de-teste-123456');
-    await userEvent.type(screen.getByLabelText('Usuário root'), 'root');
+    await userEvent.type(screen.getByLabelText('Usuário'), 'root');
     await userEvent.type(screen.getByLabelText('Senha'), 'senha-muito-longa');
-    await userEvent.type(screen.getByLabelText('Confirmação da senha'), 'senha-muito-longa');
+    await userEvent.type(screen.getByLabelText('Confirmar senha'), 'senha-muito-longa');
     await userEvent.click(screen.getByRole('button', { name: 'Criar root' }));
+    expect(await screen.findByRole('heading', { name: 'GitHub' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Pular por agora' }));
+    expect(await screen.findByRole('heading', { name: 'Perfil de IA' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Pular por agora' }));
+    expect(await screen.findByRole('heading', { name: 'Configurações da instância' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Concluir' }));
     expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Criar root' })).not.toBeInTheDocument();
   });

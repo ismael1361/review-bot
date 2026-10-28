@@ -7,7 +7,7 @@ import { getSystemSettings } from '../../src/api/routes/settings-system';
 import { setSetting } from '../../src/db/settings';
 import { GitHubError } from '../../src/github/client';
 import { createTestDeps } from '../helpers/app';
-import { startRuntime } from '../../src/server';
+import { createRuntimeWorkerDeps, startRuntime } from '../../src/server';
 
 const poller = vi.hoisted(() => ({
   pollOnce: vi.fn(),
@@ -79,6 +79,15 @@ afterEach(() => {
 });
 
 describe('runtime', () => {
+  it('worker lê ALLOW_PRIVATE_URLS do config em tempo de execução', () => {
+    const deps = createTestDeps();
+    deps.config.ALLOW_PRIVATE_URLS = false;
+    const workerDeps = createRuntimeWorkerDeps(deps);
+    expect(workerDeps.allowPrivate).toBe(false);
+    deps.config.ALLOW_PRIVATE_URLS = true;
+    expect(workerDeps.allowPrivate).toBe(true);
+  });
+
   it('recupera jobs running no start e no stop', () => {
     const deps = createTestDeps();
     insertRepo(deps.db);

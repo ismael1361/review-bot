@@ -9,7 +9,7 @@ const base = {
 describe('loadConfig', () => {
   it('aplica padrões', () => {
     const config = loadConfig(base);
-    expect(config.PORT).toBe(3000);
+    expect(config.PORT).toBe(7080);
     expect(config.DATA_DIR).toBe('./data');
     expect(config.TRUST_PROXY).toBe(false);
     expect(config.isTest).toBe(true);
@@ -20,12 +20,25 @@ describe('loadConfig', () => {
     expect(loadConfig({ ...base, TRUST_PROXY: 'false' }).TRUST_PROXY).toBe(false);
   });
 
-  it('exige chave de criptografia', () => {
-    expect(() => loadConfig({ NODE_ENV: 'test' })).toThrow(/APP_ENCRYPTION_KEY/);
+  it('usa os padrões zero-config', () => {
+    const config = loadConfig({ NODE_ENV: 'production' });
+    expect(config.PORT).toBe(7080);
+    expect(config.DATA_DIR).toBe('./data');
+    expect(config.APP_ENCRYPTION_KEY).toBeUndefined();
+    expect(config.PUBLIC_URL).toBeUndefined();
+    expect(config.TRUST_PROXY).toBe(false);
+    expect(config.ALLOW_PRIVATE_URLS).toBe(false);
   });
 
-  it('exige PUBLIC_URL em produção', () => {
-    expect(() => loadConfig({ ...base, NODE_ENV: 'production' })).toThrow(/PUBLIC_URL/);
+  it('trata variáveis vazias como ausentes', () => {
+    const config = loadConfig({ NODE_ENV: 'production', APP_ENCRYPTION_KEY: '', PUBLIC_URL: '', SETUP_TOKEN: '' });
+    expect(config.APP_ENCRYPTION_KEY).toBeUndefined();
+    expect(config.PUBLIC_URL).toBeUndefined();
+    expect(config.SETUP_TOKEN).toBeUndefined();
+  });
+
+  it('aceita produção sem PUBLIC_URL definida', () => {
+    expect(() => loadConfig({ NODE_ENV: 'production' })).not.toThrow();
   });
 
   it('aceita PUBLIC_URL http e https', () => {

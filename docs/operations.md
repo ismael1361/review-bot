@@ -1,6 +1,6 @@
 # Operação do review-bot
 
-Este é o guia operacional da v1. Ele cobre a arquitetura de processo, o fluxo de um job, o runbook de falhas, backup e restauração, build multi-arquitetura e o checklist de aceite AC-01..AC-13.
+Este é o guia operacional da v1. Ele cobre a arquitetura de processo, o fluxo de um job, a operação zero-config, o runbook de falhas, backup e restauração, a release no GHCR e o checklist de aceite AC-01..AC-13.
 
 > **Status do aceite:** os 13 critérios de aceite foram documentados, mas a execução final em VPS com repositório de teste, PAT real e provedor de baixo custo **ainda está pendente e é manual**. Nenhum critério deve ser considerado aprovado sem evidência registrada na seção final deste documento.
 
@@ -30,7 +30,7 @@ O review-bot roda em **um único container** com um processo Node.js 22. Não h�
 - **Persistência da fila:** os jobs sobrevivem a reinícios. No boot e no shutdown, jobs que estavam `running` são devolvidos para `queued`; o heartbeat é de 30 s.
 - **Escala:** a v1 não suporta múltiplas réplicas. O SQLite, o poller e os workers são locais ao container; concorrência acima de 1 aumenta a contenção de escrita, por isso o máximo é 3.
 - **Migrations:** rodam automaticamente no boot a partir de `/app/drizzle`. Uma falha impede o start e deve ser tratada antes de subir a aplicação.
-- **Porta:** o Compose publica apenas `127.0.0.1:3000` (loopback). Para acesso LAN, altere o binding no Compose e restrinja por firewall; a exposição direta é HTTP sem TLS.
+- **Porta:** o Compose usa `PORT=7080` e publica `${PORT:-7080}` somente em loopback (`127.0.0.1:${PORT:-7080}:${PORT:-7080}`) por padrão; mantenha o proxy reverso no mesmo host. Para acesso direto pela LAN, altere o mapeamento para `0.0.0.0:${PORT:-7080}:${PORT:-7080}` (ou o IP da interface), restrinja por firewall e não exponha HTTP sem TLS; o wizard de setup também fica acessível nessa interface até a conclusão.
 
 ## Fluxo de um job
 
@@ -62,25 +62,35 @@ Os eventos são persistidos na tabela `events` e/ou publicados por SSE (heartbea
 - **Persistidos e publicados por SSE:** `job.started`, `job.progress`, `job.retry_scheduled`, `job.finished`, `job.failed`, `poll.updated`, `poll.skipped`, `poller.paused` e `job.created` do poller.
 - **Somente SSE:** `queue.updated`, `job.created` do enfileiramento manual e `review.published`.
 
-Eventos de webhook disponíveis para assinatura: `review.published`, `job.failed`, `job.partial`, `poller.paused` e `webhook.test` (entrega de teste). O `job.failed` está disponível na UI, mas sua entrega ainda não é disparada pelo runtime; ver a lacuna conhecida abaixo.
+Eventos de webhook disponíveis para assinatura: `review.published`, `job.failed`, `job.partial`, `poller.paused` e `webhook.test` (entrega de teste). O worker entrega `job.failed` quando o job esgota as tentativas e falha em definitivo.
 
 A retenção padrão é de 90 dias para transcrições, eventos, entregas de webhook e cache vencido; a auditoria mantém 180 dias. Jobs, reviews, achados e métricas permanecem.
 
 ## Variáveis de ambiente
 
-| Variável | Obrigatória | Padrão | Descrição |
-|---|---|---|---|
-| `APP_ENCRYPTION_KEY` | Sim | — | 32 bytes em base64 para AES-256-GCM. Cifra PAT, chaves de IA e secrets de webhook. |
-| `SETUP_TOKEN` | Não | gerado no primeiro boot | Substitui o token de setup gerado; mínimo de 16 caracteres. Útil para recuperar o acesso antes do primeiro root. O token gerado aparece uma única vez no log. |
-| `PUBLIC_URL` | Sim em produção | — | URL pública exata (`https://...`), usada para validar `Origin`, montar cookies e links. |
-| `PORT` | Não | `3000` | Porta HTTP interna. |
-| `DATA_DIR` | Não | `./data` (`/data` na imagem) | Diretório do SQLite, WAL e backups. O Compose define `/data`. |
-| `TRUST_PROXY` | Não | `false` | Confia em `X-Forwarded-*`; habilite atrás de proxy reverso. |
-| `ALLOW_PRIVATE_URLS` | Não | `false` | Permite provedores e webhooks em rede privada, loopback, link-local ou metadados. Use somente em rede interna confiável. |
-| `LOG_LEVEL` | Não | `info` | `fatal`, `error`, `warn`, `info`, `debug` ou `trace`. |
-| `TZ` | Não | `UTC` | Fuso usado na exibição de datas. |
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `APP_ENCRYPTION_KEY` | gerada em `DATA_DIR/.encryption-key` | Opcional. Chave de 32 bytes em base64 para AES-256-GCM. Se definida, tem precedência sobre o arquivo; se ausente, o arquivo (0600) é lido ou gerado. Cifra PAT, chaves de IA e secrets de webhook. |
+| `SETUP_TOKEN` | gerado no wizard | Opcional. Substitui o token de setup gerado; mínimo de 16 caracteres. O token gerado aparece somente no wizard `/setup`, nunca no log. |
+| `PUBLIC_URL` | `http://localhost:7080` | Opcional. URL pública exata (`https://...`), usada para validar `Origin`, montar cookies e links. Também pode ser salva em **Definições > Sistema**. |
+| `PORT` | `7080` | Porta HTTP interna e porta publicada pelo Compose. |
+| `DATA_DIR` | `./data` (`/data` na imagem) | Diretório do SQLite, WAL, backups e `.encryption-key`. O Compose define `/data`. |
+| `TRUST_PROXY` | `false` | Confia em `X-Forwarded-*`; habilite atrás de proxy reverso. Também pode ser salvo em **Definições > Sistema**. |
+| `ALLOW_PRIVATE_URLS` | `false` | Permite provedores e webhooks em rede privada, loopback, link-local ou metadados. Também pode ser salvo em **Definições > Sistema**. Use somente em rede interna confiável. |
+| `LOG_LEVEL` | `info` | `fatal`, `error`, `warn`, `info`, `debug` ou `trace`. |
+| `TZ` | `UTC` | Fuso usado na exibição de datas. |
 
-O Compose sobrescreve `DATA_DIR` para `/data`. O `NODE_ENV=production` é definido na imagem runtime.
+O Compose sobrescreve `DATA_DIR` para `/data` e mantém o volume nomeado `review-bot-data`. O `NODE_ENV=production` é definido na imagem runtime.
+
+## Zero-config
+
+Sem `.env`, a instância sobe com os padrões da tabela: `PORT=7080`, `DATA_DIR=./data` (`/data` na imagem), `PUBLIC_URL` efetiva `http://localhost:7080`, `TRUST_PROXY=false`, `ALLOW_PRIVATE_URLS=false`, `LOG_LEVEL=info` e `TZ=UTC`. O wizard `/setup` gera o token de setup e o usuário root; não é necessário configurar chave nem token antes do primeiro boot.
+
+Para `PUBLIC_URL`, `TRUST_PROXY` e `ALLOW_PRIVATE_URLS`, a precedência é **ambiente > banco > padrão**: o wizard e a tela **Definições > Sistema** gravam no banco, mas uma variável de ambiente equivalente sempre vence. As demais variáveis vêm apenas do ambiente e usam o padrão da tabela.
+
+A chave de criptografia é opcional. A precedência é `APP_ENCRYPTION_KEY` > `DATA_DIR/.encryption-key` (0600) > chave nova gerada. Se houver PAT, chaves de IA ou secrets de webhook no banco e nenhuma chave estiver disponível, o boot falha para não perder o acesso aos segredos. Faça backup do banco e da `.encryption-key` separadamente; a perda da chave exige recadastrar os segredos.
+
+O token de setup gerado só é exibido no wizard `/setup` e nunca é escrito no log. `SETUP_TOKEN` permite definir um token conhecido antes do primeiro boot, útil quando a instância fica exposta antes do setup.
 
 ## Procedimentos operacionais
 
@@ -94,7 +104,7 @@ curl -fsS https://<seu-host>/readyz
 ```
 
 - `/healthz` verifica o processo e uma consulta SQLite. Retorna 503 se o banco falhar.
-- `/readyz` também informa `paused`, que reflete **somente a pausa da fila**, e `uptimeSec`. A pausa do poller não aparece aqui; ela será exibida na saúde do dashboard após a Task 8.
+- `/readyz` também informa `paused`, que reflete **somente a pausa da fila**, e `uptimeSec`. A pausa do poller aparece na saúde do dashboard.
 - O Compose tem healthcheck a cada 30 s, com 3 tentativas.
 
 ### Pausar e retomar a fila
@@ -119,7 +129,16 @@ O script usa a API de backup do SQLite, grava em `DATA_DIR/backups/review-bot-<t
 scp -r ./backups usuario@servidor-backup:/caminho/
 ```
 
-Guarde a cópia externa com o mesmo cuidado do banco: ela contém dados e segredos cifrados. A chave de criptografia deve ser guardada separadamente.
+Guarde a cópia externa com o mesmo cuidado do banco: ela contém dados e segredos cifrados. A chave de criptografia deve ser guardada separadamente e **não** dentro de `./backups`. Se a instância usa a chave em arquivo, copie-a para um local separado:
+
+```bash
+docker compose cp app:/data/.encryption-key ./chave-encryption-key
+chmod 600 ./chave-encryption-key
+```
+
+Guarde essa cópia de preferência fora do repositório. `chave-encryption-key`, `.encryption-key` e `backups/` estão no `.gitignore` e no `.dockerignore`; nunca inclua a chave no contexto de build nem a versione.
+
+Se a chave vem de `APP_ENCRYPTION_KEY`, o arquivo não existe; guarde o valor em um gerenciador de segredos ou em outro local separado do backup.
 
 **Restauração:**
 
@@ -129,7 +148,7 @@ Guarde a cópia externa com o mesmo cuidado do banco: ela contém dados e segred
    docker compose stop app
    ```
 
-2. Restaure o arquivo para o volume, removendo antes o banco e os sidecars WAL/SHM. O comando abaixo usa a imagem da própria aplicação e o volume `data`:
+2. Restaure o arquivo para o volume, removendo antes o banco e os sidecars WAL/SHM. O comando abaixo usa a imagem da própria aplicação e o volume nomeado `review-bot-data`:
 
    ```bash
    docker compose run --rm --no-deps \
@@ -137,9 +156,19 @@ Guarde a cópia externa com o mesmo cuidado do banco: ela contém dados e segred
      app sh -c 'rm -f /data/review-bot.db /data/review-bot.db-wal /data/review-bot.db-shm && cp /backups/review-bot-<timestamp>.db /data/review-bot.db'
    ```
 
-   No Windows PowerShell, use `${PWD}` no lugar de `$(pwd)` e confira o nome do volume com `docker volume ls`.
+   No Windows PowerShell, use `${PWD}` no lugar de `$(pwd)` e confira o volume `review-bot-data` com `docker volume ls`.
 
-3. Suba novamente e valide:
+3. Se a instância usa a chave em arquivo, restaure-a com permissão `0600`:
+
+   ```bash
+   docker compose run --rm --no-deps \
+     -v "$(pwd):/host:ro" \
+     app sh -c 'cp /host/chave-encryption-key /data/.encryption-key && chmod 600 /data/.encryption-key'
+   ```
+
+   Se a instância usa `APP_ENCRYPTION_KEY`, defina a mesma chave no ambiente; não crie o arquivo.
+
+4. Suba novamente e valide:
 
    ```bash
    docker compose start app
@@ -147,11 +176,11 @@ Guarde a cópia externa com o mesmo cuidado do banco: ela contém dados e segred
    curl -fsS https://<seu-host>/healthz
    ```
 
-4. Confirme login, dashboard, fila e uma review recente. As migrations rodam no boot; se o backup for de uma versão anterior, use a imagem correspondente ao schema antes de aplicar upgrades.
+5. Confirme login, dashboard, fila e uma review recente. As migrations rodam no boot; se o backup for de uma versão anterior, use a imagem correspondente ao schema antes de aplicar upgrades.
 
 **Observações importantes:**
 
-- A `APP_ENCRYPTION_KEY` precisa ser a mesma do backup. Com outra chave, o banco abre, mas PAT, chaves de IA e secrets de webhook ficam ilegíveis.
+- A chave de criptografia precisa ser a mesma do backup: `APP_ENCRYPTION_KEY` ou a `.encryption-key` correspondente. Se a chave estiver ausente e houver segredos cifrados, o container não inicia; com outra chave, o banco abre, mas PAT, chaves de IA e secrets de webhook ficam ilegíveis.
 - Não copie o arquivo do banco com o container em execução sem usar a API de backup: o WAL pode estar ativo.
 - Mantenha cópias fora do host e teste a restauração periodicamente em ambiente descartável.
 
@@ -185,15 +214,74 @@ Evite manter a senha no histórico do shell. A senha também pode ser alterada p
 
 As migrations são aplicadas no boot e não há downgrade automático. Se uma migration falhar, o container não inicia: restaure o backup e volte para a versão anterior da imagem. Faça upgrades em janela de manutenção quando houver jobs em execução; jobs `running` são devolvidos para `queued` no próximo boot.
 
-### Build multi-arquitetura
+#### Instalações do Plano 3 (volume `data` e `.env` antigo)
 
-Para gerar a imagem para `linux/amd64` e `linux/arm64`:
+O Plano 3 usava um volume `data` prefixado pelo projeto Compose (por exemplo, `<projeto>_data`), `PORT=3000` e `APP_ENCRYPTION_KEY` no `.env`. O Plano 4 usa o volume fixo `review-bot-data` e `PORT=7080`.
+
+1. Faça backup do banco antigo e guarde a chave (`APP_ENCRYPTION_KEY` e/ou `.encryption-key`) fora do repositório, com permissão `600` na cópia em arquivo.
+2. Pare a stack antiga (`docker compose down`) e identifique o volume prefixado:
+
+   ```bash
+   docker volume ls
+   ```
+
+3. Crie o volume fixo e copie o conteúdo antigo (banco, WAL/SHM, backups e eventual `.encryption-key`):
+
+   ```bash
+   docker volume create review-bot-data
+   docker run --rm \
+     -v <projeto>_data:/from:ro \
+     -v review-bot-data:/to \
+     alpine sh -c 'cp -a /from/. /to/'
+   ```
+
+4. Mantenha o mesmo `APP_ENCRYPTION_KEY` no `.env` novo ou migre para a chave em arquivo, copiando o valor original para o volume:
+
+   ```bash
+   printf '%s' "$APP_ENCRYPTION_KEY" > chave-encryption-key
+   chmod 600 chave-encryption-key
+   docker run --rm \
+     -v "$PWD/chave-encryption-key:/host/key:ro" \
+     -v review-bot-data:/data \
+     alpine sh -c 'cp /host/key /data/.encryption-key && chmod 600 /data/.encryption-key'
+   ```
+
+   No PowerShell, use `${PWD}` no lugar de `$PWD`. Se mantiver a variável de ambiente, não crie o arquivo.
+
+5. Atualize `PORT` e `PUBLIC_URL` juntos: o padrão antigo era `3000` e o novo é `7080`. Se o proxy ainda aponta para `3000`, ajuste o proxy para `7080` ou defina `PORT=3000`; se `PUBLIC_URL` estava em `http://localhost:3000`, atualize para `http://localhost:7080` (ou para a URL pública HTTPS real).
+6. Suba a nova stack e valide login, fila, uma review recente e a publicação:
+
+   ```bash
+   docker compose up -d
+   docker compose logs -f app
+   ```
+
+O volume antigo `<projeto>_data` é deixado intacto; remova-o manualmente com `docker volume rm <projeto>_data` somente depois de validar a migração.
+
+## Release
+
+Cada tag `v*` dispara `.github/workflows/release.yml`, que constrói e publica a imagem multi-arquitetura (`linux/amd64` e `linux/arm64`) no GHCR:
+
+```text
+ghcr.io/<owner>/review-bot:<tag>
+ghcr.io/<owner>/review-bot:latest
+```
+
+A release anexa três arquivos: `docker-compose.yml` com a imagem da tag já fixada, `.env.example` e `SHA256SUMS`. Baixe-os, confira o checksum e suba sem build local:
+
+```bash
+docker compose -f docker-compose.yml up -d
+```
+
+O compose da release usa o mesmo volume nomeado `review-bot-data`, a porta `${PORT:-7080}` e as mesmas variáveis opcionais do compose de desenvolvimento. Para atualizar depois de uma nova tag, substitua o `docker-compose.yml` pelo da nova release e execute `docker compose pull && docker compose up -d`.
+
+Para gerar uma imagem multi-arquitetura localmente, sem publicar:
 
 ```bash
 docker buildx build --platform linux/amd64,linux/arm64 -t review-bot:latest .
 ```
 
-Para publicar em registry, acrescente `--push`. O `--load` só funciona com uma única plataforma. A imagem runtime roda como usuário `node`, copia `scripts/` e mantém `/data` com ownership de `node`.
+Acrescente `--push` para publicar em um registry; `--load` só funciona com uma única plataforma. A imagem runtime roda como usuário `node`, copia `scripts/` e mantém `/data` com ownership de `node`.
 
 ## Runbook de falhas
 
@@ -217,21 +305,34 @@ Para publicar em registry, acrescente `--push`. O `--load` só funciona com uma 
 | Webhook `job.failed` não entregue | URL bloqueada por SSRF, secret incorreto, timeout ou indisponibilidade | Veja o histórico de entregas; valide a URL, o secret e o status. O worker dispara `job.failed` ao esgotar as tentativas. URLs privadas exigem `ALLOW_PRIVATE_URLS=true`. |
 | Job travado em `running` | Processo encerrado sem shutdown ou worker sem heartbeat | Reinicie o container; o boot devolve jobs `running` para `queued`. O heartbeat de 30 s e o `busy_timeout` reduzem a janela de travamento. |
 | Review sem comentários inline | Todos os achados estavam fora do diff ou o GitHub rejeitou posições | Verifique o status dos achados (`outside_diff`/`fallback`) e o corpo do review em **Reviews**. A review pode estar `posted` com os achados apenas no corpo. |
-| Setup já concluído | Token usado após o root existir | O setup é permanente. Use login normal; se perdeu a senha, use o script de reset. Se perdeu o token antes do setup, defina `SETUP_TOKEN` e reinicie ou recrie o volume de dados ainda não configurado. |
+| Setup já concluído | Token usado após o root existir | O setup é permanente. Use login normal; se perdeu a senha, use o script de reset. O token só aparece no wizard `/setup`; se perdê-lo antes de concluir, defina `SETUP_TOKEN` e reinicie ou recrie o volume de dados ainda não configurado. |
 
 ### Recuperação de desastre
 
-1. Provisione um host com Docker e o mesmo `.env` (incluindo a `APP_ENCRYPTION_KEY`).
+1. Provisione um host com Docker e a mesma chave de criptografia (`APP_ENCRYPTION_KEY` ou a `.encryption-key` restaurada) e as demais variáveis do `.env`, se usadas.
 2. Restaure o backup conforme a seção anterior.
 3. Suba a mesma versão da imagem usada no backup.
 4. Valide `/healthz`, login, fila, um job recente e a publicação em um repositório de teste.
-5. Se a chave de criptografia foi perdida, o banco pode ser restaurado, mas PAT, chaves de IA e secrets precisam ser recadastrados; reviews e histórico continuam legíveis.
+5. Se a chave de criptografia foi perdida e existem segredos cifrados, o container não inicia até que uma chave seja fornecida. Restaure a chave original do backup. Se ela não existir mais, inicie com uma chave nova e recadastre PAT, chaves de IA e secrets; reviews e histórico continuam legíveis, mas os segredos antigos ficam ilegíveis. Os comandos para os modos arquivo e ambiente estão em **Rotação e perda de segredos**.
 
 ### Rotação e perda de segredos
 
 - **PAT ou chave de IA:** salve um novo valor em **Definições > GitHub** ou **Definições > IA**. O valor anterior é substituído.
 - **Secret de webhook:** edite o webhook e informe um novo secret, ou recrie o webhook.
-- **Chave de criptografia:** não há rotação automática. Trocar `APP_ENCRYPTION_KEY` invalida os segredos existentes; recadastre-os depois da troca. Guarde a chave em um gerenciador de segredos e faça backup separado.
+- **Chave de criptografia:** não há rotação automática. Trocar `APP_ENCRYPTION_KEY` ou a `.encryption-key` invalida os segredos existentes; recadastre-os depois da troca. Guarde a chave em um gerenciador de segredos e faça backup separado.
+  - **Modo arquivo (`DATA_DIR/.encryption-key`):** restaure a cópia guardada ou, se ela não existir mais, gere uma chave nova. Em ambos os casos, grave o arquivo no volume com permissão `600`:
+
+    ```bash
+    # restaurar a cópia original (ou, para chave nova: openssl rand -base64 32 > chave-encryption-key)
+    chmod 600 chave-encryption-key
+    docker compose run --rm --no-deps \
+      -v "$(pwd):/host:ro" \
+      app sh -c 'cp /host/chave-encryption-key /data/.encryption-key && chmod 600 /data/.encryption-key'
+    docker compose up -d
+    ```
+
+  - **Modo ambiente (`APP_ENCRYPTION_KEY`):** restaure o valor original no `.env`/gerenciador de segredos ou gere uma chave nova com `openssl rand -base64 32`, defina `APP_ENCRYPTION_KEY` e reinicie com `docker compose up -d`.
+  - Com uma chave nova, recadastre PAT, chaves de IA e secrets de webhook em **Definições**; reviews, jobs e histórico continuam legíveis.
 
 ## Checklist de aceite AC-01..AC-13
 
@@ -239,15 +340,15 @@ Para publicar em registry, acrescente `--push`. O `--load` só funciona com uma 
 
 ### AC-01 — Setup e token
 
-**Critério:** em instalação limpa, o setup exige o token do log; token errado é rejeitado; root é criado; novas tentativas de setup passam a ser rejeitadas (409).
+**Critério:** em instalação limpa, o setup exige o token exibido no wizard; token errado é rejeitado; root é criado; novas tentativas de setup passam a ser rejeitadas (409).
 
-1. Em um host/volume vazio, configure `.env` com uma `APP_ENCRYPTION_KEY` nova e, opcionalmente, `SETUP_TOKEN`.
-2. Suba com `docker compose up -d --build` e obtenha o token em `docker compose logs app` (procure `Token de setup`).
-3. Acesse `/setup`. Tente um token incorreto e confirme a mensagem de token inválido (HTTP 401).
+1. Em um host/volume vazio, o `.env` é opcional. Se quiser um token conhecido, defina `SETUP_TOKEN`; caso contrário, deixe o wizard gerar o token.
+2. Suba com `docker compose up -d` e abra `/setup`. O token gerado aparece no campo do próprio wizard e não é escrito no log.
+3. Tente um token incorreto e confirme a mensagem de token inválido (HTTP 401).
 4. Informe o token correto, usuário root e senha com 12 ou mais caracteres. Confirme a entrada no dashboard.
 5. Tente novamente `POST /api/setup` com o token antigo e confirme HTTP 409 `setup_already_complete`; o setup não pode ser repetido. A verificação é o 409 da segunda chamada, não um redirecionamento automático de `/setup`.
 
-**Evidência esperada:** log com o token de setup (sem expor o valor no relatório), captura do erro e do sucesso, status 409 da segunda tentativa.
+**Evidência esperada:** captura do wizard com o token (sem expor o valor no relatório), captura do erro e do sucesso, status 409 da segunda tentativa.
 
 ### AC-02 — PAT
 
@@ -344,7 +445,7 @@ Para publicar em registry, acrescente `--push`. O `--load` só funciona com uma 
    ```
 
    Os campos `*_encrypted` devem ser ciphertext, não os valores originais.
-4. Procure os valores do PAT, da chave de IA e do secret de webhook em `docker compose logs app` e confirme que não aparecem; campos conhecidos (`authorization`, `cookie`, `token`, `password`, `apiKey`) são redigidos. O token de setup é a exceção deliberada: ele aparece uma única vez, antes da conclusão do setup.
+4. Procure os valores do PAT, da chave de IA e do secret de webhook em `docker compose logs app` e confirme que não aparecem; campos conhecidos (`authorization`, `cookie`, `token`, `password`, `apiKey`) são redigidos. O token de setup também não aparece no log: ele é exibido somente no wizard `/setup` antes da conclusão.
 5. Verifique que os backups também contêm apenas os valores cifrados.
 
 **Evidência esperada:** saída da consulta sem segredos em claro e busca nos logs sem correspondência.

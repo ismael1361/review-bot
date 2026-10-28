@@ -23,8 +23,8 @@ export default defineConfig({
     env: {
       NODE_ENV: 'production',
       PORT: '3300',
-      PUBLIC_URL: 'http://127.0.0.1:3300',
       DATA_DIR: dataDir,
+      DOTENV_CONFIG_PATH: join(dataDir, '.env.e2e'),
       APP_ENCRYPTION_KEY: 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=',
       SETUP_TOKEN: 'token-de-setup-e2e-123456',
       LOG_LEVEL: 'warn',

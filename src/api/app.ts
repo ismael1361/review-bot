@@ -22,6 +22,7 @@ import { registerJobRoutes } from './routes/jobs';
 import { registerReviewDetailRoutes } from './routes/reviews';
 import { registerQueueRoutes } from './routes/queue';
 import { registerSystemSettingsRoutes } from './routes/settings-system';
+import { registerInstanceSettingsRoutes } from './routes/instance';
 import { registerDashboardRoutes } from './routes/dashboard';
 import { registerEventRoutes } from './routes/events';
 import { registerAuditRoutes } from './routes/audit';
@@ -73,6 +74,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   registerReviewDetailRoutes(app, deps);
   registerQueueRoutes(app, deps);
   registerSystemSettingsRoutes(app, deps);
+  registerInstanceSettingsRoutes(app, deps);
   registerDashboardRoutes(app, deps);
   registerEventRoutes(app, deps);
   registerAuditRoutes(app, deps);

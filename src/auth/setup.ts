@@ -12,24 +12,36 @@ import { hashPassword } from './password';
 const SETUP_COMPLETE_KEY = 'setup_complete';
 const SETUP_TOKEN_HASH_KEY = 'setup_token_hash';
 
+let cachedSetupToken: string | undefined;
+
 export function isSetupComplete(db: Db): boolean {
   return getSetting<boolean>(db, SETUP_COMPLETE_KEY) === true;
 }
 
-export function ensureSetupToken(db: Db, logger: Logger, envToken?: string): void {
+export function getSetupTokenForDisplay(): string | undefined {
+  return cachedSetupToken;
+}
+
+export function ensureSetupToken(db: Db, _logger: Logger, envToken?: string): string | undefined {
   if (isSetupComplete(db)) {
-    return;
+    cachedSetupToken = undefined;
+    return undefined;
   }
-  const existingHash = getSetting<string>(db, SETUP_TOKEN_HASH_KEY);
-  if (existingHash && !envToken) {
-    return;
+  if (envToken) {
+    const hash = hashToken(envToken);
+    if (getSetting<string>(db, SETUP_TOKEN_HASH_KEY) !== hash) {
+      setSetting(db, SETUP_TOKEN_HASH_KEY, hash);
+    }
+    cachedSetupToken = undefined;
+    return undefined;
   }
-  if (envToken && existingHash === hashToken(envToken)) {
-    return;
+  if (cachedSetupToken) {
+    return cachedSetupToken;
   }
-  const token = envToken ?? randomBytes(32).toString('base64url');
+  const token = randomBytes(32).toString('base64url');
   setSetting(db, SETUP_TOKEN_HASH_KEY, hashToken(token));
-  logger.warn(`Token de setup (uso único): ${token}`);
+  cachedSetupToken = token;
+  return token;
 }
 
 export async function completeSetup(db: Db, input: { token: string; username: string; password: string }): Promise<{ userId: string }> {
@@ -71,5 +83,6 @@ export async function completeSetup(db: Db, input: { token: string; username: st
       .run();
     tx.delete(appSettings).where(eq(appSettings.key, SETUP_TOKEN_HASH_KEY)).run();
   });
+  cachedSetupToken = undefined;
   return { userId };
 }

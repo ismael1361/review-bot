@@ -178,7 +178,7 @@ describe('segurança', () => {
         db,
         config,
         logger,
-        encryptionKey: loadEncryptionKey(config.APP_ENCRYPTION_KEY),
+        encryptionKey: loadEncryptionKey(process.env.APP_ENCRYPTION_KEY ?? ''),
         bus: createEventBus(),
       };
       ensureSetupToken(db, logger, 'token-de-setup-de-teste-123456');

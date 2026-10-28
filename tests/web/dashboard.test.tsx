@@ -183,6 +183,21 @@ describe('Dashboard', () => {
     expect(await screen.findByRole('heading', { name: 'Primeiros passos' })).toBeInTheDocument();
     expect(screen.getByText('Perfil de IA ativo')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Configurar perfil' })).toHaveAttribute('href', '/settings/ia');
+    expect(screen.getByRole('link', { name: 'Configurar sistema' })).toHaveAttribute('href', '/settings/sistema');
+    expect(screen.queryByRole('link', { name: 'Configurar GitHub' })).not.toBeInTheDocument();
+  });
+
+  it('aponta para o GitHub quando a credencial está pendente', async () => {
+    stubDashboard('admin', {
+      ...dashboardData,
+      onboarding: { githubConfigured: false, activeProfile: true, pollingEnabled: true },
+    });
+    renderDashboard();
+
+    expect(await screen.findByRole('link', { name: 'Configurar GitHub' })).toHaveAttribute(
+      'href',
+      '/settings/github',
+    );
   });
 
   it('esconde primeiros passos quando tudo está configurado', async () => {

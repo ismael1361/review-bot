@@ -5,7 +5,8 @@ import { loadConfig } from "./config";
 import { createLogger } from "./logger";
 import { createDb } from "./db/client";
 import { runMigrations } from "./db/migrate";
-import { loadEncryptionKey } from "./auth/crypto";
+import { resolveEncryptionKey } from "./instance/keys";
+import { applyInstanceSettings, effectiveTrustProxy, getInstanceSettings } from "./instance/settings";
 import { purgeExpiredSessions } from "./auth/sessions";
 import { ensureSetupToken } from "./auth/setup";
 import { createEventBus } from "./events/bus";
@@ -13,7 +14,7 @@ import { buildApp, type AppDeps } from "./api/app";
 import { getSystemSettings } from "./api/routes/settings-system";
 import { GitHubError } from "./github/client";
 import { pollOnce, recordPollAuthFailure } from "./github/poller";
-import { createWorker } from "./jobs/worker";
+import { createWorker, type WorkerDeps } from "./jobs/worker";
 import { executeJob } from "./jobs/execute";
 import { recoverOrphans } from "./jobs/queue";
 import { runRetention } from "./ops/retention";
@@ -21,17 +22,23 @@ import "dotenv/config";
 
 export type RuntimeDeps = AppDeps & { fetchImpl?: typeof fetch };
 
-export function startRuntime(deps: RuntimeDeps): { stop: () => void } {
-  const settings = getSystemSettings(deps.db);
-  const workerDeps = {
+export function createRuntimeWorkerDeps(deps: RuntimeDeps): WorkerDeps {
+  return {
     db: deps.db,
     bus: deps.bus,
     logger: deps.logger,
     encryptionKey: deps.encryptionKey,
     fetchImpl: deps.fetchImpl,
     handler: executeJob,
-    allowPrivate: deps.config.ALLOW_PRIVATE_URLS,
+    get allowPrivate() {
+      return deps.config.ALLOW_PRIVATE_URLS;
+    },
   };
+}
+
+export function startRuntime(deps: RuntimeDeps): { stop: () => void } {
+  const settings = getSystemSettings(deps.db);
+  const workerDeps = createRuntimeWorkerDeps(deps);
   recoverOrphans(deps.db, 0);
   const workers = Array.from({ length: settings.concurrency }, (_, index) => {
     const worker = createWorker(workerDeps, `w${index + 1}`);
@@ -128,7 +135,10 @@ async function main(): Promise<void> {
   mkdirSync(config.DATA_DIR, { recursive: true });
   const { db } = createDb(join(config.DATA_DIR, "review-bot.db"));
   runMigrations(db, join(process.cwd(), "drizzle"));
-  const encryptionKey = loadEncryptionKey(config.APP_ENCRYPTION_KEY);
+  const encryptionKey = resolveEncryptionKey(db, config.DATA_DIR, config.APP_ENCRYPTION_KEY);
+  const instanceSettings = getInstanceSettings(db);
+  config.TRUST_PROXY = effectiveTrustProxy(instanceSettings, process.env);
+  applyInstanceSettings(config, instanceSettings, process.env);
   ensureSetupToken(db, logger, config.SETUP_TOKEN);
   purgeExpiredSessions(db);
   const purgeTimer = setInterval(() => purgeExpiredSessions(db), 24 * 60 * 60 * 1000);

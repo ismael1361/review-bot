@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app';
-import { completeSetup, isSetupComplete } from '../../auth/setup';
+import { completeSetup, getSetupTokenForDisplay, isSetupComplete } from '../../auth/setup';
 import { createSession, setSessionCookie } from '../../auth/sessions';
 
 const SetupBody = z.object({
@@ -11,7 +11,17 @@ const SetupBody = z.object({
 });
 
 export function registerSetupRoutes(app: FastifyInstance, deps: AppDeps): void {
-  app.get('/api/setup/status', async () => ({ needsSetup: !isSetupComplete(deps.db) }));
+  app.get('/api/setup/status', async () => {
+    if (isSetupComplete(deps.db)) {
+      return { needsSetup: false };
+    }
+    const envToken = deps.config.SETUP_TOKEN?.trim();
+    return {
+      needsSetup: true,
+      tokenSource: envToken ? ('env' as const) : ('generated' as const),
+      setupToken: envToken ? undefined : getSetupTokenForDisplay(),
+    };
+  });
 
   app.post('/api/setup', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request, reply) => {
     const body = SetupBody.parse(request.body);

@@ -403,8 +403,15 @@ export function Dashboard() {
           <ul className="space-y-2 text-sm">
             <li className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-[var(--text)]">Credencial GitHub</span>
-              <span className={onboarding.githubConfigured ? 'text-[var(--success)]' : 'text-[var(--warning)]'}>
-                {onboarding.githubConfigured ? 'Configurada' : 'Pendente'}
+              <span className="flex items-center gap-2">
+                <span className={onboarding.githubConfigured ? 'text-[var(--success)]' : 'text-[var(--warning)]'}>
+                  {onboarding.githubConfigured ? 'Configurada' : 'Pendente'}
+                </span>
+                {onboarding.githubConfigured ? null : (
+                  <Link className="text-[var(--link)] underline-offset-2 hover:underline" to="/settings/github">
+                    Configurar GitHub
+                  </Link>
+                )}
               </span>
             </li>
             <li className="flex flex-wrap items-center justify-between gap-2">
@@ -422,8 +429,15 @@ export function Dashboard() {
             </li>
             <li className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-[var(--text)]">Polling habilitado</span>
-              <span className={onboarding.pollingEnabled ? 'text-[var(--success)]' : 'text-[var(--warning)]'}>
-                {onboarding.pollingEnabled ? 'Habilitado' : 'Pendente'}
+              <span className="flex items-center gap-2">
+                <span className={onboarding.pollingEnabled ? 'text-[var(--success)]' : 'text-[var(--warning)]'}>
+                  {onboarding.pollingEnabled ? 'Habilitado' : 'Pendente'}
+                </span>
+                {onboarding.pollingEnabled ? null : (
+                  <Link className="text-[var(--link)] underline-offset-2 hover:underline" to="/settings/sistema">
+                    Configurar sistema
+                  </Link>
+                )}
               </span>
             </li>
           </ul>
