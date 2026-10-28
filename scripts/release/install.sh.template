@@ -1,0 +1,35 @@
+#!/usr/bin/env sh
+set -eu
+
+cd "$(dirname "$0")"
+
+IMAGE="{{IMAGE_REF}}"
+ARCH="{{ARCH}}"
+
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Docker não encontrado. Instale Docker Engine ou Docker Desktop antes de continuar." >&2
+  exit 1
+fi
+
+if ! docker compose version >/dev/null 2>&1; then
+  echo "Docker Compose v2 não encontrado. Atualize o Docker Compose e tente novamente." >&2
+  exit 1
+fi
+
+case "$(uname -m)" in
+  x86_64|amd64) HOST_ARCH="amd64" ;;
+  aarch64|arm64) HOST_ARCH="arm64" ;;
+  *) HOST_ARCH="unknown" ;;
+esac
+
+if [ "$HOST_ARCH" != "$ARCH" ]; then
+  echo "Este pacote é para a arquitetura $ARCH, mas o host é $HOST_ARCH. Baixe o zip review-bot-$HOST_ARCH.zip." >&2
+  exit 1
+fi
+
+docker load -i review-bot-image.tar
+docker compose up -d --wait
+
+echo "Imagem carregada: $IMAGE"
+echo "review-bot iniciado em http://localhost:7080"
+echo "Abra essa URL e conclua o wizard de setup."

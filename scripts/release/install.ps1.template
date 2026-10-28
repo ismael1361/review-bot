@@ -1,0 +1,39 @@
+$ErrorActionPreference = 'Stop'
+
+Set-Location $PSScriptRoot
+
+$Image = "{{IMAGE_REF}}"
+$Arch = "{{ARCH}}"
+
+if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+  throw 'Docker não encontrado. Instale o Docker Desktop antes de continuar.'
+}
+
+docker compose version | Out-Null
+if ($LASTEXITCODE -ne 0) {
+  throw 'Docker Compose v2 não encontrado. Atualize o Docker Desktop e tente novamente.'
+}
+
+$HostArch = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) {
+  'X64' { 'amd64' }
+  'Arm64' { 'arm64' }
+  default { 'unknown' }
+}
+
+if ($HostArch -ne $Arch) {
+  throw "Este pacote é para a arquitetura $Arch, mas o host é $HostArch. Baixe o zip review-bot-$HostArch.zip."
+}
+
+docker load -i .\review-bot-image.tar
+if ($LASTEXITCODE -ne 0) {
+  throw 'Falha ao carregar a imagem Docker.'
+}
+
+docker compose up -d --wait
+if ($LASTEXITCODE -ne 0) {
+  throw 'Falha ao subir o review-bot com Docker Compose.'
+}
+
+Write-Host "Imagem carregada: $Image"
+Write-Host 'review-bot iniciado em http://localhost:7080'
+Write-Host 'Abra essa URL e conclua o wizard de setup.'

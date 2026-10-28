@@ -17,6 +17,7 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
+      - run: command -v zip >/dev/null || (sudo apt-get update && sudo apt-get install -y zip unzip)
       - run: bun run typecheck
       - run: bun run lint
       - run: bun run test
@@ -58,16 +59,43 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: true
           sbom: true
-      - name: Preparar anexos
+      - name: Garantir zip disponível
+        run: command -v zip >/dev/null || (sudo apt-get update && sudo apt-get install -y zip)
+      - name: Exportar bundles por arquitetura
         run: |
+          set -euo pipefail
+          IMAGE="${{ steps.image.outputs.name }}"
+          TAG="${{ github.ref_name }}"
+          REPO="${{ github.repository }}"
           mkdir -p release
-          sed "s|__IMAGE__|${{ steps.image.outputs.name }}:${{ github.ref_name }}|" docker-compose.release.yml > release/docker-compose.yml
-          cp .env.example release/.env.example
-          (cd release && sha256sum docker-compose.yml .env.example > SHA256SUMS)
+          for arch in amd64 arm64; do
+            for attempt in 1 2 3 4 5 6; do
+              if docker pull --platform "linux/${arch}" "${IMAGE}:${TAG}"; then
+                break
+              fi
+              if [ "$attempt" = 6 ]; then
+                exit 1
+              fi
+              sleep 10
+            done
+            docker save -o "release-image-${arch}.tar" "${IMAGE}:${TAG}"
+            node scripts/release/assemble-bundle.mjs \
+              --arch "$arch" \
+              --image "$IMAGE" \
+              --tag "$TAG" \
+              --repo "$REPO" \
+              --tar "release-image-${arch}.tar" \
+              --out release
+            rm -f "release-image-${arch}.tar"
+          done
+          node scripts/release/render-release-body.mjs \
+            --repo "$REPO" \
+            --tag "$TAG" \
+            --image "$IMAGE" \
+            --out release/RELEASE_BODY.md
       - uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          body_path: release/RELEASE_BODY.md
           files: |
-            release/docker-compose.yml
-            release/.env.example
-            release/SHA256SUMS
+            release/review-bot-amd64.zip
+            release/review-bot-arm64.zip

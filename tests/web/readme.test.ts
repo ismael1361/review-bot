@@ -10,15 +10,35 @@ const expectedImages = ['setup', 'dashboard', 'queue', 'review-detail', 'setting
   (name) => `docs/images/${name}.png`,
 );
 
+function section(title: string): string {
+  const start = readme.indexOf(`## ${title}`);
+  if (start === -1) {
+    return '';
+  }
+  const end = readme.indexOf('\n## ', start + 1);
+  return readme.slice(start, end === -1 ? undefined : end);
+}
+
 describe('README', () => {
   it.each([
-    '## Instalação rápida (sem .env)',
+    '## Instalação rápida (release, sem git)',
     '## Configuração',
     '## Primeiro acesso',
     '## Backup e restauração',
     '## Solução de problemas',
   ])('tem o título %s', (heading) => {
     expect(headingLines).toContain(heading);
+  });
+
+  it('ensina a instalar pelo zip da release sem git', () => {
+    const quickStart = section('Instalação rápida (release, sem git)');
+    expect(quickStart).toContain('releases/latest/download/review-bot-amd64.zip');
+    expect(quickStart).toContain('unzip review-bot-amd64.zip');
+    expect(quickStart).toContain('./install.sh');
+    expect(quickStart).toContain('.\\install.ps1');
+    expect(quickStart).toContain('http://localhost:7080');
+    expect(quickStart).not.toContain('git clone');
+    expect(quickStart).not.toContain('docker compose up -d --build');
   });
 
   it('referencia apenas imagens existentes em docs/images', () => {

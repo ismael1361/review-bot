@@ -21,17 +21,34 @@ Painel e automação de code review de Pull Requests: o bot encontra PRs com rev
 - Um provedor de IA compatível com a API de chat da OpenAI ou com a API da Anthropic.
 - Para desenvolvimento: Bun 1.4.2 (lockfileVersion 2) e Node.js 22 ou superior.
 
-## Instalação rápida (sem .env)
+## Instalação rápida (release, sem git)
+
+Baixe o zip da release, descompacte e rode o instalador. A imagem Docker já vai dentro do pacote; não é necessário clonar o repositório nem construir a imagem.
+
+**Linux/macOS (amd64):**
 
 ```bash
-docker compose up -d
+curl -fL -o review-bot-amd64.zip \
+  https://github.com/<owner>/review-bot/releases/latest/download/review-bot-amd64.zip
+unzip review-bot-amd64.zip
+cd review-bot-amd64
+./install.sh
 ```
 
-Abra `http://localhost:7080`. O wizard de setup gera o token de uso único, cria o usuário root e guia a configuração de GitHub, IA e instância. Nenhum `.env` é necessário para começar.
+**Windows PowerShell (amd64):**
+
+```powershell
+Invoke-WebRequest -Uri https://github.com/<owner>/review-bot/releases/latest/download/review-bot-amd64.zip -OutFile review-bot-amd64.zip
+Expand-Archive review-bot-amd64.zip -DestinationPath .
+cd review-bot-amd64
+.\install.ps1
+```
+
+Para arm64, troque `amd64` por `arm64`. Para uma versão específica, troque `latest` por `download/vX.Y.Z` no caminho da release. O instalador carrega o tar com `docker load`, sobe o compose e aguarda o healthcheck; depois abra `http://localhost:7080` e conclua o wizard.
 
 > **Atenção:** qualquer pessoa com acesso à instância antes da conclusão do setup pode criar o root. Conclua o setup imediatamente. Se a instância ficará exposta publicamente antes disso, defina `SETUP_TOKEN` com pelo menos 16 caracteres e reinicie o container.
 
-O Compose cria o volume nomeado `review-bot-data` e publica a porta `${PORT:-7080}` somente em loopback (`127.0.0.1`). Para parar:
+O pacote cria o volume fixo `review-bot-data` e publica a porta `${PORT:-7080}` somente em loopback (`127.0.0.1`). Para parar:
 
 ```bash
 docker compose down
@@ -39,15 +56,15 @@ docker compose down
 
 Os dados permanecem no volume `review-bot-data`; `docker compose down -v` também remove o volume.
 
-## Instalação pela release
+### Instalação via GHCR (opcional)
 
-Baixe na página de releases o `docker-compose.yml`, o `.env.example` e o `SHA256SUMS`. O compose da release já aponta para a imagem publicada no GHCR, sem exigir build local:
+A mesma imagem é publicada como `ghcr.io/<owner>/review-bot:<tag>`, com `latest` e a versão da tag. Se preferir puxar do registry em vez de carregar o tar, use o `docker-compose.yml` de dentro do zip:
 
 ```bash
 docker compose -f docker-compose.yml up -d
 ```
 
-A imagem é publicada como `ghcr.io/<owner>/review-bot:<tag>`, com `latest` e a versão da tag. Se o pacote for privado, autentique antes com `echo "$GHCR_TOKEN" | docker login ghcr.io -u <usuário> --password-stdin`.
+Se o pacote for privado, autentique antes com `echo "$GHCR_TOKEN" | docker login ghcr.io -u <usuário> --password-stdin`. A instalação pelo zip não depende do GHCR nem de internet depois do download.
 
 ## Primeiro acesso
 
@@ -195,15 +212,20 @@ O Compose publica `${PORT:-7080}` somente em loopback (`127.0.0.1:${PORT:-7080}:
 ## Atualização
 
 1. Faça backup do banco e guarde a chave separadamente.
-2. Atualize o compose ou o código.
-3. Puxe a nova imagem e suba:
+2. Baixe o zip da nova versão, substitua os arquivos do diretório da instalação e rode o instalador novamente:
+
+   ```bash
+   ./install.sh
+   ```
+
+   No Windows, use `.\install.ps1`. O instalador carrega a nova imagem e preserva o volume `review-bot-data`.
+
+3. Se você usa a instalação via GHCR, puxe a nova imagem e suba:
 
    ```bash
    docker compose pull
    docker compose up -d
    ```
-
-   No checkout local, troque `pull` por `build --pull`.
 
 4. Acompanhe `docker compose logs -f app` e confirme `GET /healthz`.
 
@@ -244,12 +266,14 @@ Instalações anteriores ao Plano 4 usavam um volume `data` prefixado pelo proje
    No PowerShell, use `${PWD}` no lugar de `$PWD`. Se mantiver a variável de ambiente, não crie o arquivo.
 
 5. Atualize `PORT` e `PUBLIC_URL` juntos: o padrão antigo era `3000` e o novo é `7080`. Se o proxy ainda aponta para `3000`, ou ajuste o proxy para `7080` ou defina `PORT=3000`; se `PUBLIC_URL` estava em `http://localhost:3000`, atualize para `http://localhost:7080` (ou para a URL pública HTTPS real).
-6. Suba a nova stack e valide login, fila, uma review recente e a publicação:
+6. Baixe o zip da release, extraia no diretório da instalação e rode o instalador; se preferir GHCR, use `docker compose up -d`. Depois valide login, fila, uma review recente e a publicação:
 
    ```bash
-   docker compose up -d
+   ./install.sh
    docker compose logs -f app
    ```
+
+   No Windows, use `.\install.ps1`.
 
 O volume antigo `<projeto>_data` é deixado intacto; remova-o manualmente com `docker volume rm <projeto>_data` somente depois de validar a migração.
 

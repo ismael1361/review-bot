@@ -201,15 +201,14 @@ Evite manter a senha no histórico do shell. A senha também pode ser alterada p
 ### Upgrade
 
 1. Faça backup e guarde o arquivo fora do host.
-2. Atualize o código (`git pull`) ou a imagem publicada.
-3. Reconstrua e suba:
+2. Baixe o zip da nova versão (ou a imagem publicada no GHCR).
+3. Rode o instalador do pacote:
 
    ```bash
-   docker compose build --pull
-   docker compose up -d
+   ./install.sh
    ```
 
-   Se usar uma imagem de registry, troque o build por `docker compose pull`.
+   No Windows, use `.\install.ps1`. Se usar a instalação via GHCR, troque por `docker compose pull && docker compose up -d`.
 4. Acompanhe os logs e valide `/healthz` e `/readyz`.
 
 As migrations são aplicadas no boot e não há downgrade automático. Se uma migration falhar, o container não inicia: restaure o backup e volte para a versão anterior da imagem. Faça upgrades em janela de manutenção quando houver jobs em execução; jobs `running` são devolvidos para `queued` no próximo boot.
@@ -249,31 +248,41 @@ O Plano 3 usava um volume `data` prefixado pelo projeto Compose (por exemplo, `<
    No PowerShell, use `${PWD}` no lugar de `$PWD`. Se mantiver a variável de ambiente, não crie o arquivo.
 
 5. Atualize `PORT` e `PUBLIC_URL` juntos: o padrão antigo era `3000` e o novo é `7080`. Se o proxy ainda aponta para `3000`, ajuste o proxy para `7080` ou defina `PORT=3000`; se `PUBLIC_URL` estava em `http://localhost:3000`, atualize para `http://localhost:7080` (ou para a URL pública HTTPS real).
-6. Suba a nova stack e valide login, fila, uma review recente e a publicação:
+6. Baixe o zip da release, extraia no diretório da instalação e rode o instalador; se preferir GHCR, use `docker compose up -d`. Depois valide login, fila, uma review recente e a publicação:
 
    ```bash
-   docker compose up -d
+   ./install.sh
    docker compose logs -f app
    ```
+
+   No Windows, use `.\install.ps1`.
 
 O volume antigo `<projeto>_data` é deixado intacto; remova-o manualmente com `docker volume rm <projeto>_data` somente depois de validar a migração.
 
 ## Release
 
-Cada tag `v*` dispara `.github/workflows/release.yml`, que constrói e publica a imagem multi-arquitetura (`linux/amd64` e `linux/arm64`) no GHCR:
+Cada tag `v*` dispara `.github/workflows/release.yml`, que constrói e publica a imagem multi-arquitetura (`linux/amd64` e `linux/arm64`) no GHCR e gera dois zips autocontidos:
 
 ```text
 ghcr.io/<owner>/review-bot:<tag>
 ghcr.io/<owner>/review-bot:latest
 ```
 
-A release anexa três arquivos: `docker-compose.yml` com a imagem da tag já fixada, `.env.example` e `SHA256SUMS`. Baixe-os, confira o checksum e suba sem build local:
+A release anexa `review-bot-amd64.zip` e `review-bot-arm64.zip`. Cada zip contém a imagem (`review-bot-image.tar`), `docker-compose.yml` com a tag fixada, `.env.example`, `INSTALL.md`, `install.sh`, `install.ps1` e `SHA256SUMS`. O usuário final não usa git: baixa o zip da arquitetura correta, descompacta e roda o instalador.
+
+Download e instalação (Linux/macOS, amd64):
 
 ```bash
-docker compose -f docker-compose.yml up -d
+curl -fL -o review-bot-amd64.zip \
+  https://github.com/<owner>/review-bot/releases/latest/download/review-bot-amd64.zip
+unzip review-bot-amd64.zip
+cd review-bot-amd64
+./install.sh
 ```
 
-O compose da release usa o mesmo volume nomeado `review-bot-data`, a porta `${PORT:-7080}` e as mesmas variáveis opcionais do compose de desenvolvimento. Para atualizar depois de uma nova tag, substitua o `docker-compose.yml` pelo da nova release e execute `docker compose pull && docker compose up -d`.
+No Windows PowerShell, use `Invoke-WebRequest`, `Expand-Archive` e `.\install.ps1`. Para arm64, troque `amd64` por `arm64`. Para uma versão específica, troque `latest` por `download/<tag>`.
+
+O instalador carrega o tar com `docker load` e executa `docker compose up -d --wait`; o compose usa o volume `review-bot-data`, a porta `${PORT:-7080}` e as mesmas variáveis opcionais do compose de desenvolvimento. A imagem também pode ser usada pelo GHCR, sem o tar, com `docker compose pull && docker compose up -d`. Para atualizar, faça backup, substitua o diretório pelo zip novo e rode o instalador novamente.
 
 Para gerar uma imagem multi-arquitetura localmente, sem publicar:
 
